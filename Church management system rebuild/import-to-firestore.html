@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KRE — Import data into Firebase</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<style>
+  *{box-sizing:border-box} body{margin:0;font-family:'Outfit',sans-serif;background:#f6f1ea;color:#2c2233;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:30px}
+  .card{background:#fffdfa;border:1px solid #e7dcc9;border-radius:18px;max-width:560px;width:100%;padding:34px;box-shadow:0 20px 60px rgba(50,20,60,.12)}
+  h1{font-family:'Fraunces',serif;font-weight:600;font-size:26px;margin:0 0 6px}
+  p{color:#5f5366;font-size:14px;line-height:1.55}
+  .btn{font-family:'Outfit';font-weight:600;font-size:15px;padding:13px 22px;border-radius:11px;border:none;background:#4a1d6e;color:#fff;cursor:pointer;margin-top:14px}
+  .btn:disabled{opacity:.5;cursor:default}
+  .log{margin-top:20px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;background:#26093f;color:#ecc868;border-radius:12px;padding:16px 18px;max-height:260px;overflow:auto;white-space:pre-wrap;line-height:1.5}
+  .warn{background:#f7ece6;border:1px solid #e6cdbf;color:#b25636;border-radius:10px;padding:11px 14px;font-size:13px;margin-top:14px}
+  .ok{color:#5f7355;font-weight:600}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Push church data into Firebase</h1>
+  <p>This loads <b>data/seed-data.json</b> (your cleaned Excel data — 98 members, 1,171 attendance records, 84 first timers, 24 services) and writes it into your Firestore, using stable document IDs so it is safe to re-run without creating duplicates.</p>
+  <div id="cfgWarn" class="warn" style="display:none">⚠ Your <b>firebase-config.js</b> still has placeholder values. Paste your real Firebase config first (see README.md), then reload this page.</div>
+  <div id="signin" style="margin-top:16px">
+    <label style="font-size:12px;font-weight:600;color:#5f5366">Staff email</label>
+    <input id="email" type="email" placeholder="you@church.org" style="width:100%;font-family:'Outfit';font-size:14px;padding:10px 12px;border:1.5px solid #e7dcc9;border-radius:10px;margin:5px 0 12px;outline:none">
+    <label style="font-size:12px;font-weight:600;color:#5f5366">Password</label>
+    <input id="pass" type="password" placeholder="••••••••" style="width:100%;font-family:'Outfit';font-size:14px;padding:10px 12px;border:1.5px solid #e7dcc9;border-radius:10px;margin:5px 0 0;outline:none">
+    <p style="font-size:12.5px;color:#928697;margin:10px 0 0">Sign in with a user you created in Firebase ▸ Authentication. (If you're importing during a temporary open-rules window, you can leave these blank.)</p>
+  </div>
+  <button id="run" class="btn">Sign in &amp; import all data</button>
+  <div id="log" class="log" style="display:none"></div>
+</div>
+<script>
+const logEl = document.getElementById('log');
+function log(msg, cls){ logEl.style.display='block'; const line=document.createElement('div'); if(cls)line.className=cls; line.textContent=msg; logEl.appendChild(line); logEl.scrollTop=logEl.scrollHeight; }
+const cfg = window.KRE_FIREBASE_CONFIG || {};
+const ready = cfg.apiKey && cfg.apiKey.indexOf('PASTE')<0;
+if(!ready){ document.getElementById('cfgWarn').style.display='block'; document.getElementById('run').disabled=true; }
+
+document.getElementById('run').addEventListener('click', async () => {
+  const btn=document.getElementById('run'); btn.disabled=true;
+  try {
+    if(!firebase.apps.length) firebase.initializeApp(cfg);
+    const db = firebase.firestore();
+    const email=(document.getElementById('email').value||'').trim();
+    const pass=document.getElementById('pass').value||'';
+    if(email && pass){
+      log('Signing in as '+email+'…');
+      await firebase.auth().signInWithEmailAndPassword(email, pass);
+      log('  signed in ✓');
+    }
+    log('Loading seed-data.json…');
+    const seed = await (await fetch('data/seed-data.json')).json();
+
+    // Build (collection, docId, data) tuples with deterministic IDs.
+    const ops = [];
+    (seed.pastors||[]).forEach(p => ops.push(['pastors', p.id, { name:p.name }]));
+    (seed.members||[]).forEach(m => ops.push(['members', m.id, { name:m.name, phone:m.phone, location:m.location, status:m.status, pastorId:m.pastorId||null, source:m.source||'roster' }]));
+    (seed.attendance||[]).forEach(a => ops.push(['attendance', a.memberId+'_'+a.date, { memberId:a.memberId, date:a.date, present:!!a.present, minutes:a.minutes==null?null:a.minutes }]));
+    (seed.services||[]).forEach(s => ops.push(['services', s.date, { date:s.date, headcount:s.headcount==null?null:s.headcount, guestRoll:s.guestRoll||[] }]));
+    (seed.firstTimers||[]).forEach(f => ops.push(['firstTimers', f.id, { name:f.name, invitedBy:f.invitedBy, contacts:f.contacts, visits:f.visits||[], firstVisit:f.firstVisit||null, linkedMemberId:f.linkedMemberId||null }]));
+
+    log('Writing ' + ops.length + ' documents in batches…');
+    const CHUNK = 400;
+    for (let i=0; i<ops.length; i+=CHUNK) {
+      const batch = db.batch();
+      ops.slice(i, i+CHUNK).forEach(([col,id,data]) => batch.set(db.collection(col).doc(id), data));
+      await batch.commit();
+      log('  committed ' + Math.min(i+CHUNK, ops.length) + ' / ' + ops.length);
+    }
+    log('✓ Done. All data is now in Firestore.', 'ok');
+    log('Open the dashboard — it will connect to Firebase automatically.', 'ok');
+  } catch (e) {
+    log('✗ Error: ' + (e && e.message ? e.message : e));
+    log('Check that Firestore is created and firestore.rules allow writes (temporarily allow if=true, or sign in).');
+    btn.disabled=false;
+  }
+});
+</script>
+</body>
+</html>

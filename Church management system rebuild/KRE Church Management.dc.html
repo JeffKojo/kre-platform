@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- Firebase (compat) + your config. While config holds placeholders the app runs on local demo data; paste real keys in firebase-config.js to go live. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:#f6f1ea;color:#2c2233;font-family:'Outfit',sans-serif;-webkit-font-smoothing:antialiased;line-height:1.5}
+  a{color:#a47d1f;text-decoration:none}
+  a:hover{color:#4a1d6e}
+  input,select,button,textarea{font-family:'Outfit',sans-serif}
+  @keyframes kpop{from{transform:translateY(14px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+  @keyframes kspin{to{transform:rotate(360deg)}}
+  @keyframes kfade{from{opacity:0}to{opacity:1}}
+  ::-webkit-scrollbar{width:11px;height:11px}
+  ::-webkit-scrollbar-thumb{background:#d8cbb6;border-radius:6px;border:3px solid #f6f1ea}
+  @media print{
+    [data-noprint]{display:none!important}
+    main{padding:0!important}
+    body{background:#fff!important}
+    .report-sheet{box-shadow:none!important;border:none!important}
+    @page{margin:14mm}
+  }
+</style>
+</helmet>
+
+<div style="{{ ui.appBg }}">
+
+  <sc-if value="{{ showSpinner }}" hint-placeholder-val="{{ true }}">
+    <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">
+      <div style="width:46px;height:46px;border-radius:50%;border:4px solid #e7dcc9;border-top-color:#a47d1f;animation:kspin .9s linear infinite"></div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#5f5366;letter-spacing:.02em">Kadosh Royal Ecclesia</div>
+      <div style="font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#928697">Loading membership data…</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showLogin }}" hint-placeholder-val="{{ false }}">
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(1000px 600px at 50% -10%,#3a1257,transparent 60%),#26093f">
+      <div style="background:#fffdfa;border-radius:20px;max-width:400px;width:100%;padding:34px 32px;box-shadow:0 30px 90px rgba(0,0,0,.4);animation:kpop .3s cubic-bezier(.2,.9,.3,1)">
+        <div style="display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:22px">
+          <div style="width:62px;height:62px;border-radius:50%;background:linear-gradient(150deg,#5e2a87,#350f53);color:#ecc868;display:grid;place-items:center;font-family:'Fraunces',serif;font-weight:600;font-size:20px;box-shadow:0 0 0 2px #cda434">KRE</div>
+          <h2 style="font-family:'Fraunces',serif;font-weight:600;font-size:23px;margin:14px 0 2px">Kadosh Royal Ecclesia</h2>
+          <div style="{{ ui.muted }}">Staff sign-in</div>
+        </div>
+        <label style="{{ ui.lbl }}">Email</label>
+        <input type="email" value="{{ login.email }}" onInput="{{ login.onEmail }}" onKeyDown="{{ login.onKey }}" placeholder="you@church.org" style="{{ ui.input }};width:100%;margin-bottom:12px">
+        <label style="{{ ui.lbl }}">Password</label>
+        <input type="password" value="{{ login.pass }}" onInput="{{ login.onPass }}" onKeyDown="{{ login.onKey }}" placeholder="••••••••" style="{{ ui.input }};width:100%">
+        <sc-if value="{{ login.hasError }}" hint-placeholder-val="{{ false }}"><div style="color:#c2683f;font-size:12.5px;margin-top:11px">{{ login.error }}</div></sc-if>
+        <button onClick="{{ login.onSubmit }}" style="{{ ui.btn }};width:100%;margin-top:18px;padding:12px">Sign in</button>
+        <button onClick="{{ login.onDemo }}" style="{{ ui.btnGhost }};width:100%;margin-top:9px">Explore with demo data</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ ready }}" hint-placeholder-val="{{ false }}">
+  <div style="display:flex;min-height:100vh">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside data-noprint style="{{ ui.sidebar }}">
+      <div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:4px 6px 18px;border-bottom:1px solid rgba(236,200,104,.18)">
+        <div style="{{ ui.crest }}">KRE</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-weight:700;font-size:19px;line-height:1.05;color:#fff;letter-spacing:.02em;margin-top:12px">Kadosh Royal<br>Ecclesia</div>
+        <div style="font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:#ecc868;margin-top:6px">Membership Platform</div>
+      </div>
+      <nav style="display:flex;flex-direction:column;gap:3px;margin-top:16px;flex:1;overflow:auto">
+        <sc-for list="{{ nav }}" as="item" hint-placeholder-count="7">
+          <button onClick="{{ item.onClick }}" style="{{ item.style }}">
+            <span style="width:20px;text-align:center;font-size:14px;flex:none">{{ item.glyph }}</span>{{ item.label }}
+          </button>
+        </sc-for>
+      </nav>
+      <div style="padding-top:14px;border-top:1px solid rgba(236,200,104,.14)">
+        <div style="{{ ui.modeBadge }}">{{ modeLabel }}</div>
+        <sc-if value="{{ canSignOut }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ onSignOut }}" style="width:100%;margin-top:8px;font-size:11px;font-weight:600;color:#d9cce4;background:transparent;border:1px solid rgba(236,200,104,.24);border-radius:8px;padding:6px;cursor:pointer">Sign out</button>
+        </sc-if>
+        <div style="font-size:10.5px;color:rgba(217,204,228,.55);text-align:center;margin-top:8px">{{ roleLabel }} access · auto-saving</div>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <main style="flex:1;min-width:0;padding:28px 34px 70px">
+      <div style="margin-bottom:18px">
+        <div style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#a47d1f;font-weight:600;margin-bottom:7px">{{ crumb }}</div>
+        <h1 style="font-family:'Fraunces',serif;font-weight:600;font-size:31px;line-height:1;margin:0;letter-spacing:-.01em">{{ title }}</h1>
+      </div>
+
+      <!-- ---------- DASHBOARD ---------- -->
+      <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:15px;margin-bottom:18px">
+          <sc-for list="{{ dash.cards }}" as="c" hint-placeholder-count="6">
+            <div style="{{ c.style }}">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#928697;font-weight:600">{{ c.k }}</div>
+              <div style="font-family:'Fraunces',serif;font-size:34px;font-weight:600;line-height:1;margin-top:9px">{{ c.v }}</div>
+              <div style="font-size:12px;color:#5f5366;margin-top:6px">{{ c.d }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:15px;margin-bottom:15px" data-grid2>
+          <div style="{{ ui.panel }}">
+            <div style="{{ ui.panelH }}"><h3 style="{{ ui.h3 }}">Attendance Momentum</h3><div style="{{ ui.muted }}">Sunday headcount, every recorded service</div></div>
+            <div style="display:flex;align-items:flex-end;gap:5px;height:200px;padding-top:10px">
+              <sc-for list="{{ dash.trend }}" as="b" hint-placeholder-count="12">
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end">
+                  <div style="width:100%;background:linear-gradient(180deg,#ecc868,#a47d1f);border-radius:4px 4px 0 0;{{ b.barStyle }}" title="{{ b.title }}"></div>
+                  <div style="font-size:8.5px;color:#928697;white-space:nowrap;transform:rotate(-45deg);transform-origin:center;height:14px">{{ b.label }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="{{ ui.panel }}">
+            <div style="{{ ui.panelH }}"><h3 style="{{ ui.h3 }}">By Status</h3></div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <sc-for list="{{ dash.status }}" as="s" hint-placeholder-count="5">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="{{ s.badge }}">{{ s.label }}</div>
+                  <div style="flex:1;height:20px;background:#efe7d8;border-radius:5px;overflow:hidden"><div style="height:100%;border-radius:5px;{{ s.barStyle }}"></div></div>
+                  <div style="width:30px;text-align:right;font-weight:700;font-size:13px">{{ s.n }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px" data-grid2>
+          <div style="{{ ui.panel }}">
+            <div style="{{ ui.panelH }}"><h3 style="{{ ui.h3 }}">Most Faithful</h3><div style="{{ ui.muted }}">by attendance rate</div></div>
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <sc-for list="{{ dash.faithful }}" as="f" hint-placeholder-count="6">
+                <div style="display:flex;align-items:center;gap:11px;cursor:pointer" onClick="{{ f.onOpen }}">
+                  <div style="flex:none;width:150px;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ f.name }}</div>
+                  <div style="flex:1;height:18px;background:#efe7d8;border-radius:5px;overflow:hidden"><div style="height:100%;background:linear-gradient(90deg,#ecc868,#a47d1f);border-radius:5px;{{ f.barStyle }}"></div></div>
+                  <div style="width:38px;text-align:right;font-weight:700;font-size:12px">{{ f.pct }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="{{ ui.panel }}">
+            <div style="{{ ui.panelH }}"><h3 style="{{ ui.h3 }}">Needs Follow-Up</h3><div style="{{ ui.muted }}">not seen in 4+ services</div></div>
+            <sc-if value="{{ dash.hasRisk }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-wrap:wrap;gap:7px">
+                <sc-for list="{{ dash.risk }}" as="r" hint-placeholder-count="6">
+                  <span style="{{ ui.chipRisk }}" onClick="{{ r.onOpen }}">{{ r.name }} · {{ r.ago }}</span>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ dash.noRisk }}" hint-placeholder-val="{{ false }}">
+              <div style="{{ ui.muted }}">Everyone has been seen recently.</div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ---------- THIS SUNDAY ---------- -->
+      <sc-if value="{{ isSunday }}" hint-placeholder-val="{{ false }}">
+        <p style="{{ ui.intro }}">Record one Sunday at a time. <b>Overall headcount</b> is the single total present — members, visitors and online. <b>Member roll</b> is who on the register was here and how long they stayed. <b>Guests</b> captures people who came but aren't members, without adding them to the roll.</p>
+
+        <div style="{{ ui.panel }};margin-bottom:15px">
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <button onClick="{{ sunday.prev }}" style="{{ ui.btnGhost }}">‹ Prev</button>
+            <div style="text-align:center;min-width:220px">
+              <div style="font-family:'Fraunces',serif;font-size:23px;font-weight:600">{{ sunday.dateLabel }}</div>
+              <div style="{{ ui.muted }}">{{ sunday.statusLine }}</div>
+            </div>
+            <button onClick="{{ sunday.next }}" style="{{ ui.btnGhost }}">Next ›</button>
+            <label style="margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12.5px;color:#5f5366">Jump to any Sunday
+              <input type="date" value="{{ sunday.dateISO }}" onChange="{{ sunday.pick }}" style="{{ ui.input }}">
+            </label>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:340px 1fr;gap:15px;align-items:start" data-grid2>
+          <!-- LEFT: headcount + guests -->
+          <div style="display:flex;flex-direction:column;gap:15px">
+            <div style="{{ ui.panelGold }}">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#a47d1f;font-weight:700">① Overall Headcount</div>
+              <div style="{{ ui.muted }};margin:5px 0 12px">Total present incl. visitors &amp; online</div>
+              <input type="number" min="0" value="{{ sunday.headcount }}" onBlur="{{ sunday.setHeadcount }}" onKeyDown="{{ sunday.hcKey }}" placeholder="—" style="width:100%;font-family:'Fraunces',serif;font-size:38px;font-weight:600;color:#2c2233;background:#fff;border:1.5px solid #e7dcc9;border-radius:12px;padding:8px 16px;outline:none;text-align:center">
+              <div style="margin-top:12px;padding:11px 13px;background:#f6f1ea;border-radius:10px;font-size:12.5px;color:#5f5366">
+                Marked present: <b>{{ sunday.markedCount }}</b> members + <b>{{ sunday.guestCount }}</b> guests = <b>{{ sunday.suggested }}</b>
+                <button onClick="{{ sunday.useSuggested }}" style="{{ ui.btnMini }};margin-top:8px">Set headcount = {{ sunday.suggested }}</button>
+              </div>
+            </div>
+            <div style="{{ ui.panel }}">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#2f8079;font-weight:700">③ Guests &amp; One-Timers</div>
+              <div style="{{ ui.muted }};margin:5px 0 12px">Present but not members — kept off the roll</div>
+              <div style="display:flex;gap:7px;margin-bottom:11px">
+                <input type="text" value="{{ sunday.guestInput }}" onInput="{{ sunday.guestType }}" onKeyDown="{{ sunday.guestKey }}" placeholder="Add a guest name…" style="{{ ui.input }};flex:1">
+                <button onClick="{{ sunday.addGuest }}" style="{{ ui.btn }}">Add</button>
+              </div>
+              <sc-if value="{{ sunday.hasGuests }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  <sc-for list="{{ sunday.guests }}" as="g" hint-placeholder-count="3">
+                    <span style="{{ ui.guestChip }}">{{ g.name }}<b style="color:#c2683f;cursor:pointer;margin-left:2px" onClick="{{ g.onRemove }}">✕</b></span>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ sunday.noGuests }}" hint-placeholder-val="{{ false }}">
+                <div style="{{ ui.muted }}">No guests recorded yet.</div>
+              </sc-if>
+            </div>
+          </div>
+
+          <!-- RIGHT: member roll -->
+          <div style="{{ ui.panel }}">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px">
+              <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#5e2a87;font-weight:700">② Member Roll</div><div style="{{ ui.muted }};margin-top:4px">Tap a member to mark present; set minutes stayed</div></div>
+              <input type="text" value="{{ sunday.search }}" onInput="{{ sunday.searchType }}" placeholder="Find a member…" style="{{ ui.input }}">
+            </div>
+            <div style="max-height:60vh;overflow:auto;margin-top:8px;border-top:1px solid #f1e9da">
+              <sc-for list="{{ sunday.roll }}" as="m" hint-placeholder-count="10">
+                <div style="{{ m.rowStyle }}">
+                  <button onClick="{{ m.onToggle }}" style="{{ m.toggleStyle }}">{{ m.toggleGlyph }}</button>
+                  <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.name }}</div><div style="font-size:11.5px;color:#928697">{{ m.statusLabel }}</div></div>
+                  <sc-if value="{{ m.present }}" hint-placeholder-val="{{ true }}">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#5f5366">min
+                      <input type="number" min="0" value="{{ m.minutes }}" onBlur="{{ m.onMinutes }}" onKeyDown="{{ m.minKey }}" style="width:62px;text-align:center;font-size:13px;background:#fff;border:1.5px solid #e7dcc9;border-radius:8px;padding:6px 8px;outline:none">
+                    </label>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ---------- MEMBERS ---------- -->
+      <sc-if value="{{ isMembers }}" hint-placeholder-val="{{ false }}">
+        <p style="{{ ui.intro }}">Every member with their live classification. Click a name for the full profile; add, edit, reassign a pastor or change status — every change saves instantly.</p>
+        <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:15px">
+          <input type="text" value="{{ members.search }}" onInput="{{ members.searchType }}" placeholder="Search a member…" style="{{ ui.input }};min-width:220px">
+          <sc-for list="{{ members.filters }}" as="f" hint-placeholder-count="5">
+            <button onClick="{{ f.onClick }}" style="{{ f.style }}">{{ f.label }}</button>
+          </sc-for>
+          <button onClick="{{ members.onAdd }}" style="{{ ui.btn }};margin-left:auto">+ Add Member</button>
+        </div>
+        <div style="{{ ui.tblWrap }}">
+          <table style="{{ ui.table }}">
+            <thead><tr>
+              <th style="{{ ui.th }}">Member</th><th style="{{ ui.th }}">Status</th><th style="{{ ui.th }}">Pastor</th><th style="{{ ui.th }}">Location</th><th style="{{ ui.th }}">Services</th><th style="{{ ui.th }}">Rate</th><th style="{{ ui.th }}">Last Seen</th>
+            </tr></thead>
+            <tbody>
+              <sc-for list="{{ members.rows }}" as="m" hint-placeholder-count="12">
+                <tr style="cursor:pointer;border-bottom:1px solid #f1e9da" onClick="{{ m.onOpen }}">
+                  <td style="{{ ui.tdName }}">{{ m.name }}</td>
+                  <td style="{{ ui.td }}"><span style="{{ m.badge }}">{{ m.status }}</span></td>
+                  <td style="{{ ui.td }}">{{ m.pastor }}</td>
+                  <td style="{{ ui.td }}">{{ m.location }}</td>
+                  <td style="{{ ui.td }}">{{ m.services }}</td>
+                  <td style="{{ ui.td }}">{{ m.rate }}</td>
+                  <td style="{{ ui.td }}">{{ m.lastSeen }}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+        <div style="{{ ui.muted }};margin-top:10px">{{ members.count }}</div>
+      </sc-if>
+
+      <!-- ---------- REGISTER ---------- -->
+      <sc-if value="{{ isRegister }}" hint-placeholder-val="{{ false }}">
+        <p style="{{ ui.intro }}">The attendance register. Green = present, orange = absent, blank = not recorded. Tap any cell to toggle. Pick any year — future Sundays (e.g. 2027) are open for marking and the service is created automatically the first time you tap.</p>
+        <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+          <input type="text" value="{{ register.search }}" onInput="{{ register.searchType }}" placeholder="Find a member…" style="{{ ui.input }};min-width:200px">
+          <sc-for list="{{ register.years }}" as="y" hint-placeholder-count="3">
+            <button onClick="{{ y.onClick }}" style="{{ y.style }}">{{ y.label }}</button>
+          </sc-for>
+          <div style="{{ ui.muted }};margin-left:6px">Green present · orange absent · blank not recorded</div>
+        </div>
+        <div style="overflow:auto;border:1px solid #e7dcc9;border-radius:14px;background:#fffdfa;max-height:72vh">
+          <table style="border-collapse:separate;border-spacing:0;font-size:12px">
+            <thead><tr>
+              <th style="{{ ui.regNameHead }}">Member</th>
+              <sc-for list="{{ register.dates }}" as="d" hint-placeholder-count="12">
+                <th style="{{ d.headStyle }}">{{ d.label }}</th>
+              </sc-for>
+            </tr></thead>
+            <tbody>
+              <sc-for list="{{ register.rows }}" as="r" hint-placeholder-count="12">
+                <tr>
+                  <td style="{{ ui.regNameCell }}">{{ r.name }}</td>
+                  <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="12">
+                    <td style="padding:0;border-bottom:1px solid #f1e9da;border-right:1px solid #f5eee0"><div onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.glyph }}</div></td>
+                  </sc-for>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </sc-if>
+
+      <!-- ---------- FIRST TIMERS ---------- -->
+      <sc-if value="{{ isFirstTimers }}" hint-placeholder-val="{{ false }}">
+        <p style="{{ ui.intro }}">Visitors from their first Sunday — who invited them and whether they came back. Retention shows how well we turn first timers into regulars.</p>
+        <div style="display:flex;gap:9px;margin-bottom:15px"><button onClick="{{ ft.onAdd }}" style="{{ ui.btn }}">+ Add First Timer</button></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:15px;margin-bottom:18px">
+          <sc-for list="{{ ft.cards }}" as="c" hint-placeholder-count="4">
+            <div style="{{ c.style }}"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#928697;font-weight:600">{{ c.k }}</div><div style="font-family:'Fraunces',serif;font-size:32px;font-weight:600;margin-top:8px">{{ c.v }}</div><div style="font-size:12px;color:#5f5366;margin-top:5px">{{ c.d }}</div></div>
+          </sc-for>
+        </div>
+        <div style="{{ ui.panel }};margin-bottom:15px">
+          <div style="{{ ui.panelH }}"><h3 style="{{ ui.h3 }}">Who's Inviting?</h3><div style="{{ ui.muted }}">first timers credited to each inviter</div></div>
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <sc-for list="{{ ft.inviters }}" as="i" hint-placeholder-count="5">
+              <div style="display:flex;align-items:center;gap:11px"><div style="flex:none;width:170px;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ i.name }}</div><div style="flex:1;height:18px;background:#efe7d8;border-radius:5px;overflow:hidden"><div style="height:100%;background:linear-gradient(90deg,#ecc868,#a47d1f);border-radius:5px;{{ i.barStyle }}"></div></div><div style="width:30px;text-align:right;font-weight:700;font-size:12px">{{ i.n }}</div></div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="{{ ui.tblWrap }}">
+          <table style="{{ ui.table }}">
+            <thead><tr><th style="{{ ui.th }}">Name</th><th style="{{ ui.th }}">Invited By</th><th style="{{ ui.th }}">First Visit</th><th style="{{ ui.th }}">Times Seen</th><th style="{{ ui.th }}">Status</th></tr></thead>
+            <tbody>
+              <sc-for list="{{ ft.rows }}" as="f" hint-placeholder-count="10">
+                <tr style="cursor:pointer;border-bottom:1px solid #f1e9da" onClick="{{ f.onOpen }}">
+                  <td style="{{ ui.tdName }}">{{ f.name }}</td><td style="{{ ui.td }}">{{ f.invitedBy }}</td><td style="{{ ui.td }}">{{ f.firstVisit }}</td><td style="{{ ui.td }}">{{ f.times }}</td><td style="{{ ui.td }}"><span style="{{ f.tagStyle }}">{{ f.tag }}</span></td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </sc-if>
+
+      <!-- ---------- FOLLOW-UP ---------- -->
+      <sc-if value="{{ isFollowup }}" hint-placeholder-val="{{ false }}">
+        <p style="{{ ui.intro }}">Every member ranked by how long since they were last in service. The people at the top are who to call or visit this week.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:15px;margin-bottom:18px">
+          <sc-for list="{{ followup.cards }}" as="c" hint-placeholder-count="3">
+            <div style="{{ c.style }}"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#928697;font-weight:600">{{ c.k }}</div><div style="font-family:'Fraunces',serif;font-size:32px;font-weight:600;margin-top:8px">{{ c.v }}</div><div style="font-size:12px;color:#5f5366;margin-top:5px">{{ c.d }}</div></div>
+          </sc-for>
+        </div>
+        <div style="{{ ui.tblWrap }}">
+          <table style="{{ ui.table }}">
+            <thead><tr><th style="{{ ui.th }}">Member</th><th style="{{ ui.th }}">Status</th><th style="{{ ui.th }}">Pastor</th><th style="{{ ui.th }}">Last Seen</th><th style="{{ ui.th }}">Flag</th></tr></thead>
+            <tbody>
+              <sc-for list="{{ followup.rows }}" as="m" hint-placeholder-count="12">
+                <tr style="cursor:pointer;border-bottom:1px solid #f1e9da" onClick="{{ m.onOpen }}">
+                  <td style="{{ ui.tdName }}">{{ m.name }}</td><td style="{{ ui.td }}"><span style="{{ m.badge }}">{{ m.status }}</span></td><td style="{{ ui.td }}">{{ m.pastor }}</td><td style="{{ ui.td }}">{{ m.lastSeen }}</td><td style="{{ ui.td }}"><span style="{{ m.tagStyle }}">{{ m.flag }}</span></td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </sc-if>
+
+      <!-- ---------- PASTORS ---------- -->
+      <sc-if value="{{ isPastors }}" hint-placeholder-val="{{ false }}">
+        <p style="{{ ui.intro }}">How each pastor's flock is engaging. Who's showing up vs. who has gone quiet and needs a follow-up.</p>
+        <div style="display:flex;margin-bottom:15px"><button onClick="{{ pastors.onAdd }}" style="{{ ui.btn }}">+ Add Pastor</button></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:15px">
+          <sc-for list="{{ pastors.cards }}" as="p" hint-placeholder-count="4">
+            <div style="{{ ui.pastorCard }}">
+              <div style="{{ ui.pastorHead }}"><div><h3 style="color:#fff;font-family:'Fraunces',serif;font-weight:600;margin:0;font-size:19px">{{ p.name }}</h3><div style="font-size:12px;color:#ecc868">{{ p.count }} members</div></div><div style="display:flex;align-items:center;gap:10px"><div style="text-align:right"><div style="font-family:'Fraunces',serif;font-size:28px;font-weight:600;color:#ecc868">{{ p.showing }}</div><div style="font-size:11px;color:#ecc868">showing up</div></div><button onClick="{{ p.onEdit }}" title="Edit pastor" style="background:rgba(255,255,255,.14);border:none;color:#ecc868;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:13px">✎</button></div></div>
+              <div style="padding:16px 18px">
+                <div style="display:flex;gap:10px;margin-bottom:12px">
+                  <div style="{{ ui.mini }}"><div style="{{ ui.miniK }}">Attend rate</div><div style="{{ ui.miniV }}">{{ p.rate }}</div></div>
+                  <div style="{{ ui.mini }}"><div style="{{ ui.miniK }}">Engaged</div><div style="{{ ui.miniV }}">{{ p.engaged }}</div></div>
+                </div>
+                <div style="font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#5f7355;margin:10px 0 6px">Showing up</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  <sc-for list="{{ p.showList }}" as="s" hint-placeholder-count="3"><span style="{{ ui.chipShow }}" onClick="{{ s.onOpen }}">{{ s.name }}</span></sc-for>
+                </div>
+                <div style="font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#c2683f;margin:12px 0 6px">Needs follow-up</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  <sc-for list="{{ p.quietList }}" as="q" hint-placeholder-count="3"><span style="{{ ui.chipRisk }}" onClick="{{ q.onOpen }}">{{ q.name }} · {{ q.ago }}</span></sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <!-- ---------- REPORTS ---------- -->
+      <sc-if value="{{ isReports }}" hint-placeholder-val="{{ false }}">
+        <p style="{{ ui.intro }}" data-noprint>Generate a clean report and take it with you. <b>Download CSV</b> opens in Excel or Google Sheets; <b>Print / Save PDF</b> gives you a printable sheet (use your browser's "Save as PDF").</p>
+        <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px" data-noprint>
+          <sc-for list="{{ reports.tabs }}" as="t" hint-placeholder-count="4">
+            <button onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
+          </sc-for>
+          <div style="margin-left:auto;display:flex;gap:9px">
+            <button onClick="{{ reports.onCSV }}" style="{{ ui.btnGhost }}">⭳ Download CSV</button>
+            <button onClick="{{ reports.onPrint }}" style="{{ ui.btn }}">⎙ Print / Save PDF</button>
+          </div>
+        </div>
+        <div class="report-sheet" style="{{ ui.panel }}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;border-bottom:2px solid #e7dcc9;padding-bottom:14px;margin-bottom:6px">
+            <div>
+              <div style="font-family:'Cormorant Garamond',serif;font-size:15px;color:#a47d1f;letter-spacing:.02em">Kadosh Royal Ecclesia</div>
+              <h2 style="font-family:'Fraunces',serif;font-weight:600;font-size:24px;margin:2px 0 0">{{ reports.title }}</h2>
+              <div style="{{ ui.muted }};margin-top:3px">{{ reports.subtitle }}</div>
+            </div>
+            <div style="text-align:right;font-size:12px;color:#928697">{{ reports.count }}<br>Generated {{ todayLabel }}</div>
+          </div>
+          <div style="overflow:auto">
+            <table style="{{ ui.table }}">
+              <thead><tr>
+                <sc-for list="{{ reports.columns }}" as="c" hint-placeholder-count="5"><th style="{{ ui.th }}">{{ c }}</th></sc-for>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{ reports.rows }}" as="r" hint-placeholder-count="12">
+                  <tr style="border-bottom:1px solid #f1e9da">
+                    <sc-for list="{{ r.cells }}" as="cell" hint-placeholder-count="5"><td style="{{ ui.td }}">{{ cell.v }}</td></sc-for>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ---------- HOUSEHOLDS ---------- -->
+      <sc-if value="{{ isHouseholds }}" hint-placeholder-val="{{ false }}">
+        <p style="{{ ui.intro }}">Group members into families / households. Assign a member to a household from their profile → Edit. <b>{{ households.unassigned }}</b> members are not yet in a household.</p>
+        <div style="display:flex;margin-bottom:15px"><button onClick="{{ households.onAdd }}" style="{{ ui.btn }}">+ Add Household</button></div>
+        <sc-if value="{{ households.hasHouseholds }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:15px">
+            <sc-for list="{{ households.cards }}" as="h" hint-placeholder-count="4">
+              <div style="{{ ui.panel }}">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><h3 style="{{ ui.h3 }}">{{ h.name }}</h3><button onClick="{{ h.onEdit }}" style="background:none;border:none;color:#a47d1f;cursor:pointer;font-size:13px">✎</button></div>
+                <div style="{{ ui.muted }};margin-bottom:10px">{{ h.count }}</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  <sc-for list="{{ h.members }}" as="m" hint-placeholder-count="3"><span style="{{ ui.chipShow }}" onClick="{{ m.onOpen }}">{{ m.name }}</span></sc-for>
+                </div>
+                <sc-if value="{{ h.empty }}" hint-placeholder-val="{{ false }}"><div style="{{ ui.muted }}">No members assigned yet.</div></sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ households.noHouseholds }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ ui.panel }};text-align:center;color:#928697;padding:40px">No households yet. Add one to start grouping families.</div>
+        </sc-if>
+      </sc-if>
+
+      <!-- ---------- GIVING ---------- -->
+      <sc-if value="{{ isGiving }}" hint-placeholder-val="{{ false }}">
+        <p style="{{ ui.intro }}">Record offerings and tithes per service, by category. Totals and a breakdown update as you enter them; export from the Reports tab.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:15px;margin-bottom:16px">
+          <sc-for list="{{ giving.cards }}" as="c" hint-placeholder-count="3">
+            <div style="{{ c.style }}"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#928697;font-weight:600">{{ c.k }}</div><div style="font-family:'Fraunces',serif;font-size:30px;font-weight:600;margin-top:8px">{{ c.v }}</div><div style="font-size:12px;color:#5f5366;margin-top:5px">{{ c.d }}</div></div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:360px 1fr;gap:15px;align-items:start" data-grid2>
+          <div style="{{ ui.panelGold }}">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#a47d1f;font-weight:700;margin-bottom:12px">Record giving</div>
+            <label style="{{ ui.lbl }}">Service date</label>
+            <input type="date" value="{{ giving.date }}" onInput="{{ giving.onDate }}" style="{{ ui.input }};width:100%;margin-bottom:11px">
+            <label style="{{ ui.lbl }}">Category</label>
+            <select value="{{ giving.category }}" onChange="{{ giving.onCategory }}" style="{{ ui.select }};width:100%;margin-bottom:11px"><sc-for list="{{ giving.catOptions }}" as="o" hint-placeholder-count="6"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select>
+            <label style="{{ ui.lbl }}">Amount (₵)</label>
+            <input type="number" min="0" step="0.01" value="{{ giving.amount }}" onInput="{{ giving.onAmount }}" onKeyDown="{{ giving.onKey }}" placeholder="0.00" style="{{ ui.input }};width:100%;margin-bottom:14px">
+            <button onClick="{{ giving.onAdd }}" style="{{ ui.btn }};width:100%">Record giving</button>
+            <div style="margin-top:18px">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#928697;font-weight:600;margin-bottom:9px">By category</div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <sc-for list="{{ giving.catBars }}" as="c" hint-placeholder-count="3">
+                  <div><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px"><span>{{ c.name }}</span><b>{{ c.amount }}</b></div><div style="height:8px;background:#efe7d8;border-radius:4px;overflow:hidden"><div style="height:100%;background:linear-gradient(90deg,#ecc868,#a47d1f);border-radius:4px;{{ c.barStyle }}"></div></div></div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+          <div style="{{ ui.panel }}">
+            <div style="{{ ui.panelH }}"><h3 style="{{ ui.h3 }}">Giving Log</h3><div style="{{ ui.muted }}">most recent first</div></div>
+            <sc-if value="{{ giving.hasRows }}" hint-placeholder-val="{{ true }}">
+              <div style="overflow:auto;max-height:60vh">
+                <table style="{{ ui.table }}"><thead><tr><th style="{{ ui.th }}">Date</th><th style="{{ ui.th }}">Category</th><th style="{{ ui.th }}">Amount</th><th style="{{ ui.th }}"></th></tr></thead>
+                <tbody>
+                  <sc-for list="{{ giving.rows }}" as="r" hint-placeholder-count="8">
+                    <tr style="border-bottom:1px solid #f1e9da"><td style="{{ ui.td }}">{{ r.date }}</td><td style="{{ ui.td }}">{{ r.category }}</td><td style="{{ ui.tdName }}">{{ r.amount }}</td><td style="{{ ui.td }}"><sc-if value="{{ r.canDelete }}" hint-placeholder-val="{{ true }}"><b style="color:#c2683f;cursor:pointer" onClick="{{ r.onDelete }}">✕</b></sc-if></td></tr>
+                  </sc-for>
+                </tbody></table>
+              </div>
+            </sc-if>
+            <sc-if value="{{ giving.noRows }}" hint-placeholder-val="{{ false }}"><div style="color:#928697;text-align:center;padding:34px">No giving recorded yet.</div></sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ---------- TEAM ---------- -->
+      <sc-if value="{{ isTeam }}" hint-placeholder-val="{{ false }}">
+        <p style="{{ ui.intro }}">Who can access the platform and what they can do. <b>Admin</b> — full access incl. delete &amp; managing the team. <b>Editor</b> — add, edit and record, but can't delete. <b>Viewer</b> — read-only. Add people in the Firebase console (Authentication → Users); they appear here after their first sign-in, then set their role.</p>
+        <sc-if value="{{ team.hasUsers }}" hint-placeholder-val="{{ true }}">
+          <div style="{{ ui.tblWrap }}">
+            <table style="{{ ui.table }}"><thead><tr><th style="{{ ui.th }}">Email</th><th style="{{ ui.th }}">Role</th></tr></thead>
+              <tbody>
+                <sc-for list="{{ team.rows }}" as="u" hint-placeholder-count="3">
+                  <tr style="border-bottom:1px solid #f1e9da"><td style="{{ ui.tdName }}">{{ u.email }}</td><td style="{{ ui.td }}"><select value="{{ u.role }}" onChange="{{ u.onRole }}" style="{{ ui.select }}"><sc-for list="{{ u.roleOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select></td></tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </sc-if>
+        <sc-if value="{{ team.noUsers }}" hint-placeholder-val="{{ false }}"><div style="{{ ui.panel }};text-align:center;color:#928697;padding:40px">No team members have signed in yet. Create logins in Firebase → Authentication, then have them sign in once.</div></sc-if>
+      </sc-if>
+
+    </main>
+  </div>
+  </sc-if>
+
+  <!-- ============ MODAL ============ -->
+  <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ modal.onBackdrop }}" style="position:fixed;inset:0;background:rgba(38,9,63,.5);backdrop-filter:blur(3px);display:flex;align-items:flex-start;justify-content:center;padding:38px 18px;z-index:60;overflow:auto;animation:kfade .18s ease">
+      <div style="background:#fffdfa;border-radius:20px;max-width:680px;width:100%;box-shadow:0 30px 90px rgba(38,9,63,.4);animation:kpop .25s cubic-bezier(.2,.9,.3,1)">
+        <div style="padding:24px 26px 18px;border-bottom:1px solid #e7dcc9;position:relative;background:linear-gradient(155deg,#fffdfa,#f3ecf6);border-radius:20px 20px 0 0">
+          <div onClick="{{ modal.onClose }}" style="position:absolute;top:18px;right:20px;font-size:19px;cursor:pointer;color:#928697;width:32px;height:32px;display:grid;place-items:center;border-radius:9px">✕</div>
+          <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(150deg,#5e2a87,#350f53);color:#ecc868;display:grid;place-items:center;font-family:'Fraunces',serif;font-size:21px;font-weight:600;margin-bottom:12px">{{ modal.avatar }}</div>
+          <h2 style="font-family:'Fraunces',serif;font-weight:600;font-size:25px;margin:0">{{ modal.title }}</h2>
+          <div style="{{ ui.muted }};margin-top:5px">{{ modal.subtitle }}</div>
+        </div>
+        <div style="padding:22px 26px 28px">
+
+          <!-- profile view -->
+          <sc-if value="{{ modal.isProfile }}" hint-placeholder-val="{{ false }}">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:11px;margin-bottom:20px">
+              <sc-for list="{{ modal.stats }}" as="s" hint-placeholder-count="4">
+                <div style="background:#f6f1ea;border-radius:12px;padding:13px 15px;border:1px solid #e7dcc9"><div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:#928697;font-weight:600">{{ s.k }}</div><div style="font-family:'Fraunces',serif;font-size:23px;font-weight:600;margin-top:4px">{{ s.v }}</div></div>
+              </sc-for>
+            </div>
+            <div>
+              <sc-for list="{{ modal.bio }}" as="b" hint-placeholder-count="4">
+                <div style="display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid #f1e9da;font-size:14px"><span style="color:#928697">{{ b.l }}</span><span style="font-weight:600;text-align:right">{{ b.r }}</span></div>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:18px 0 4px">
+              <span style="font-weight:600;font-size:14px">Status</span>
+              <select value="{{ modal.status }}" onChange="{{ modal.onStatus }}" style="{{ ui.select }}">
+                <sc-for list="{{ modal.statusOpts }}" as="o" hint-placeholder-count="6"><option value="{{ o.value }}">{{ o.label }}</option></sc-for>
+              </select>
+              <span style="font-weight:600;font-size:14px;margin-left:8px">Pastor</span>
+              <select value="{{ modal.pastorId }}" onChange="{{ modal.onPastor }}" style="{{ ui.select }}">
+                <sc-for list="{{ modal.pastorOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.value }}">{{ o.label }}</option></sc-for>
+              </select>
+              <button onClick="{{ modal.onEdit }}" style="{{ ui.btnGhost }};margin-left:auto">✎ Edit details</button>
+            </div>
+            <!-- pastoral follow-up log -->
+            <div style="margin-top:22px;border-top:1px solid #f1e9da;padding-top:16px">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#928697;font-weight:600;margin-bottom:10px">Follow-up log</div>
+              <div style="display:flex;gap:7px;margin-bottom:12px">
+                <select value="{{ modal.noteType }}" onChange="{{ modal.onNoteType }}" style="{{ ui.select }}"><sc-for list="{{ modal.noteTypeOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select>
+                <input type="text" value="{{ modal.noteText }}" onInput="{{ modal.onNoteText }}" onKeyDown="{{ modal.onNoteKey }}" placeholder="Log a call, visit or note…" style="{{ ui.input }};flex:1">
+                <button onClick="{{ modal.onAddNote }}" style="{{ ui.btn }}">Log</button>
+              </div>
+              <sc-if value="{{ modal.hasNotes }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-direction:column;gap:8px;max-height:220px;overflow:auto">
+                  <sc-for list="{{ modal.notes }}" as="n" hint-placeholder-count="3">
+                    <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:#f6f1ea;border-radius:10px">
+                      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#a47d1f;background:#f3e3b0;padding:3px 8px;border-radius:6px;flex:none">{{ n.type }}</span>
+                      <div style="flex:1;min-width:0"><div style="font-size:13.5px;color:#2c2233">{{ n.text }}</div><div style="font-size:11px;color:#928697;margin-top:2px">{{ n.date }} · {{ n.by }}</div></div>
+                      <b style="color:#c2683f;cursor:pointer;font-size:13px" onClick="{{ n.onDelete }}">✕</b>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ modal.hasNotes }}" hint-placeholder-val="{{ false }}"></sc-if>
+            </div>
+          </sc-if>
+
+          <!-- member form (add/edit) -->
+          <sc-if value="{{ modal.isMemberForm }}" hint-placeholder-val="{{ false }}">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px">
+              <div style="grid-column:1/-1"><label style="{{ ui.lbl }}">Full name *</label><input type="text" value="{{ modal.fName }}" onInput="{{ modal.onF_name }}" style="{{ ui.input }};width:100%"></div>
+              <div><label style="{{ ui.lbl }}">Phone</label><input type="text" value="{{ modal.fPhone }}" onInput="{{ modal.onF_phone }}" style="{{ ui.input }};width:100%"></div>
+              <div><label style="{{ ui.lbl }}">Email</label><input type="email" value="{{ modal.fEmail }}" onInput="{{ modal.onF_email }}" placeholder="for messages &amp; statements" style="{{ ui.input }};width:100%"></div>
+              <div><label style="{{ ui.lbl }}">Location</label><input type="text" value="{{ modal.fLocation }}" onInput="{{ modal.onF_location }}" style="{{ ui.input }};width:100%"></div>
+              <div><label style="{{ ui.lbl }}">Household</label><select value="{{ modal.fHouseholdId }}" onChange="{{ modal.onF_householdId }}" style="{{ ui.select }};width:100%"><sc-for list="{{ modal.householdOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select></div>
+              <div><label style="{{ ui.lbl }}">Status</label><select value="{{ modal.fStatus }}" onChange="{{ modal.onF_status }}" style="{{ ui.select }};width:100%"><sc-for list="{{ modal.statusOpts }}" as="o" hint-placeholder-count="6"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select></div>
+              <div><label style="{{ ui.lbl }}">Assigned Pastor</label><select value="{{ modal.fPastorId }}" onChange="{{ modal.onF_pastorId }}" style="{{ ui.select }};width:100%"><sc-for list="{{ modal.pastorOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select></div>
+            </div>
+            <sc-if value="{{ modal.hasError }}" hint-placeholder-val="{{ false }}"><div style="color:#c2683f;font-size:13px;margin-top:11px">{{ modal.error }}</div></sc-if>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:20px"><button onClick="{{ modal.onSave }}" style="{{ ui.btn }}">{{ modal.saveLabel }}</button><button onClick="{{ modal.onCancel }}" style="{{ ui.btnGhost }}">Cancel</button><sc-if value="{{ modal.canDelete }}" hint-placeholder-val="{{ false }}"><button onClick="{{ modal.onDelete }}" style="{{ ui.btnDanger }};margin-left:auto">Delete</button></sc-if></div>
+          </sc-if>
+
+          <!-- first timer form -->
+          <sc-if value="{{ modal.isFtForm }}" hint-placeholder-val="{{ false }}">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px">
+              <div style="grid-column:1/-1"><label style="{{ ui.lbl }}">Full name *</label><input type="text" value="{{ modal.fName }}" onInput="{{ modal.onF_name }}" style="{{ ui.input }};width:100%"></div>
+              <div><label style="{{ ui.lbl }}">Invited by</label><input type="text" value="{{ modal.fInvitedBy }}" onInput="{{ modal.onF_invitedBy }}" style="{{ ui.input }};width:100%"></div>
+              <div><label style="{{ ui.lbl }}">Contact</label><input type="text" value="{{ modal.fContacts }}" onInput="{{ modal.onF_contacts }}" style="{{ ui.input }};width:100%"></div>
+              <div style="grid-column:1/-1"><label style="{{ ui.lbl }}">First visit (Sunday)</label><input type="date" value="{{ modal.fFirstVisit }}" onInput="{{ modal.onF_firstVisit }}" style="{{ ui.input }};width:100%"></div>
+            </div>
+            <sc-if value="{{ modal.hasError }}" hint-placeholder-val="{{ false }}"><div style="color:#c2683f;font-size:13px;margin-top:11px">{{ modal.error }}</div></sc-if>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:20px"><button onClick="{{ modal.onSave }}" style="{{ ui.btn }}">{{ modal.saveLabel }}</button><button onClick="{{ modal.onCancel }}" style="{{ ui.btnGhost }}">Cancel</button><sc-if value="{{ modal.canDelete }}" hint-placeholder-val="{{ false }}"><button onClick="{{ modal.onDelete }}" style="{{ ui.btnDanger }};margin-left:auto">Delete</button></sc-if></div>
+          </sc-if>
+
+          <!-- pastor form -->
+          <sc-if value="{{ modal.isPastorForm }}" hint-placeholder-val="{{ false }}">
+            <div><label style="{{ ui.lbl }}">Pastor name *</label><input type="text" value="{{ modal.fName }}" onInput="{{ modal.onF_name }}" placeholder="e.g. Pastor Samuel" style="{{ ui.input }};width:100%"></div>
+            <sc-if value="{{ modal.hasError }}" hint-placeholder-val="{{ false }}"><div style="color:#c2683f;font-size:13px;margin-top:11px">{{ modal.error }}</div></sc-if>
+            <div style="{{ ui.muted }};margin-top:12px">Deleting a pastor keeps their members but leaves them unassigned.</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:20px"><button onClick="{{ modal.onSave }}" style="{{ ui.btn }}">{{ modal.saveLabel }}</button><button onClick="{{ modal.onCancel }}" style="{{ ui.btnGhost }}">Cancel</button><sc-if value="{{ modal.canDelete }}" hint-placeholder-val="{{ false }}"><button onClick="{{ modal.onDelete }}" style="{{ ui.btnDanger }};margin-left:auto">Delete</button></sc-if></div>
+          </sc-if>
+
+          <!-- household form -->
+          <sc-if value="{{ modal.isHouseholdForm }}" hint-placeholder-val="{{ false }}">
+            <div><label style="{{ ui.lbl }}">Household name *</label><input type="text" value="{{ modal.fName }}" onInput="{{ modal.onF_name }}" placeholder="e.g. The Bio Family" style="{{ ui.input }};width:100%"></div>
+            <sc-if value="{{ modal.hasError }}" hint-placeholder-val="{{ false }}"><div style="color:#c2683f;font-size:13px;margin-top:11px">{{ modal.error }}</div></sc-if>
+            <div style="{{ ui.muted }};margin-top:12px">Assign members to a household from each member's Edit screen. Deleting keeps the members, just unlinks them.</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:20px"><button onClick="{{ modal.onSave }}" style="{{ ui.btn }}">{{ modal.saveLabel }}</button><button onClick="{{ modal.onCancel }}" style="{{ ui.btnGhost }}">Cancel</button><sc-if value="{{ modal.canDelete }}" hint-placeholder-val="{{ false }}"><button onClick="{{ modal.onDelete }}" style="{{ ui.btnDanger }};margin-left:auto">Delete</button></sc-if></div>
+          </sc-if>
+
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ TOAST ============ -->
+  <sc-if value="{{ toastShow }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#26093f;color:#ecc868;font-size:13px;font-weight:500;padding:11px 20px;border-radius:999px;box-shadow:0 10px 30px rgba(38,9,63,.35);z-index:80;animation:kfade .2s ease">{{ toast }}</div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:760}}">
+class Component extends DCLogic {
+  state = {
+    ready: false, mode: 'local', snap: null, screen: 'dashboard',
+    modal: null, memFilter: 'All', memSearch: '', regYear: new Date().getFullYear(), regSearch: '',
+    svcDate: null, sundaySearch: '', guestInput: '', form: {}, formErr: '', toast: '', toastAt: 0,
+    needsLogin: false, loginEmail: '', loginPass: '', loginErr: '', reportType: 'attendance',
+    role: 'admin', userEmail: '', noteText: '', noteType: 'call', giveDate: null, giveAmount: '', giveCategory: 'Offering'
+  };
+
+  async componentDidMount() {
+    const mod = await import('./kre-db.js?v=4');
+    this._mod = mod;
+    this._STATUSES = mod.STATUSES;
+    const cfg = (typeof window !== 'undefined') && window.KRE_FIREBASE_CONFIG;
+    const useFb = cfg && cfg.apiKey && cfg.apiKey.indexOf('PASTE') < 0 && typeof window.firebase !== 'undefined' && window.firebase.auth;
+    if (useFb) {
+      try {
+        if (!window.firebase.apps || !window.firebase.apps.length) window.firebase.initializeApp(cfg);
+        this._auth = window.firebase.auth();
+        this._auth.onAuthStateChanged(user => {
+          if (user) { this._boot(false); }
+          else { this.setState({ ready: false, needsLogin: true, mode: 'firebase' }); }
+        });
+        return;
+      } catch (e) { console.warn('[KRE] auth setup failed, using demo:', e); }
+    }
+    this._boot(true);
+  }
+
+  async _boot(forceLocal) {
+    let db;
+    try {
+      // Never let startup hang: if the DB doesn't come up within 12s, fall back to local data.
+      db = await Promise.race([
+        this._mod.createDB({ forceLocal }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('boot-timeout')), 12000))
+      ]);
+    } catch (e) {
+      console.warn('[KRE] boot slow/failed — loading local data:', e);
+      db = await this._mod.createDB({ forceLocal: true });
+    }
+    this._db = db;
+    db.onChange(snap => this.setState({ snap }));
+    const snap = db.snapshot();
+    const dates = this._allDates(snap);
+    this.setState({ ready: true, needsLogin: false, mode: db.mode, snap, role: db.role || 'admin', userEmail: db.userEmail || '',
+      svcDate: dates[dates.length - 1] || this._latestSunday(), giveDate: dates[dates.length - 1] || this._latestSunday() });
+  }
+
+  async _login() {
+    this.setState({ loginErr: '' });
+    try {
+      await this._auth.signInWithEmailAndPassword((this.state.loginEmail || '').trim(), this.state.loginPass || '');
+    } catch (e) {
+      const msg = (e && e.code === 'auth/invalid-credential') ? 'Wrong email or password.' : (e && e.message) || 'Sign-in failed.';
+      this.setState({ loginErr: msg });
+    }
+  }
+  _signOut() { if (this._auth) this._auth.signOut(); }
+
+  /* ---------------- constants & tiny utils ---------------- */
+  STATUS_COLOR(s) {
+    return ({ Growing:'#5f7355', Active:'#2f8079', Worker:'#cb9a2f', Covenant:'#6b2c3e', Inactive:'#9a8d86', Drifting:'#c2683f', Unclassified:'#b3a99e' })[s] || '#b3a99e';
+  }
+  _pad(n){ return (n<10?'0':'')+n; }
+  _todayISO(){ const d=new Date(); return d.getFullYear()+'-'+this._pad(d.getMonth()+1)+'-'+this._pad(d.getDate()); }
+  _latestSunday(){ const d=new Date(); d.setDate(d.getDate()-((d.getDay()+7)%7)); return d.getFullYear()+'-'+this._pad(d.getMonth()+1)+'-'+this._pad(d.getDate()); }
+  _fmt(iso){ if(!iso) return '—'; const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; const p=iso.split('-'); return (+p[2])+' '+M[+p[1]-1]; }
+  _fmtFull(iso){ if(!iso) return '—'; const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; const p=iso.split('-'); return (+p[2])+' '+M[+p[1]-1]+' '+p[0]; }
+  _pct(a,b){ return b?Math.round(a/b*100)+'%':'0%'; }
+
+  /* ---------------- indices over snapshot ---------------- */
+  _idx() {
+    const snap = this.state.snap;
+    if (this._cache && this._cacheSrc === snap) return this._cache;
+    const membersById = {}, pastorsById = {};
+    (snap.members||[]).forEach(m => membersById[m.id]=m);
+    (snap.pastors||[]).forEach(p => pastorsById[p.id]=p);
+    const attByMember = {}, attByDate = {};
+    (snap.attendance||[]).forEach(a => {
+      (attByMember[a.memberId]=attByMember[a.memberId]||{})[a.date]=a;
+      (attByDate[a.date]=attByDate[a.date]||{})[a.memberId]=a;
+    });
+    const serviceByDate = {};
+    (snap.services||[]).forEach(s => serviceByDate[s.date]=s);
+    const householdsById = {}; (snap.households||[]).forEach(h => householdsById[h.id]=h);
+    const notesByMember = {}; (snap.notes||[]).forEach(n => { (notesByMember[n.memberId]=notesByMember[n.memberId]||[]).push(n); });
+    Object.values(notesByMember).forEach(arr => arr.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)));
+    const dates = this._allDates(snap);
+    const c = { snap, membersById, pastorsById, attByMember, attByDate, serviceByDate, householdsById, notesByMember, dates };
+    this._cache = c; this._cacheSrc = snap; return c;
+  }
+  _allDates(snap){
+    const set = {};
+    (snap.attendance||[]).forEach(a=>set[a.date]=1);
+    (snap.services||[]).forEach(s=>set[s.date]=1);
+    return Object.keys(set).sort();
+  }
+  _servicesPresent(id){ const rec=this._idx().attByMember[id]||{}; let c=0; this._idx().dates.forEach(d=>{ if(rec[d]&&rec[d].present)c++; }); return c; }
+  _rate(id){ const rec=this._idx().attByMember[id]||{}; let p=0,t=0; this._idx().dates.forEach(d=>{ const a=rec[d]; if(a&&(a.present===true||a.present===false)){t++; if(a.present)p++;} }); return t?p/t:0; }
+  _lastSeen(id){ const rec=this._idx().attByMember[id]||{}; let last=null; this._idx().dates.forEach(d=>{ if(rec[d]&&rec[d].present)last=d; }); return last; }
+  _weeksSince(id){ const ls=this._lastSeen(id); if(!ls)return 99; return this._idx().dates.filter(d=>d>ls).length; }
+  _avgDur(id){ const rec=this._idx().attByMember[id]||{}; const v=[]; this._idx().dates.forEach(d=>{ if(rec[d]&&rec[d].minutes>0)v.push(rec[d].minutes); }); return v.length?v.reduce((a,b)=>a+b,0)/v.length:0; }
+
+  /* ---------------- navigation & toast ---------------- */
+  go(screen){ this.setState({ screen, modal:null }); if(typeof window!=='undefined')window.scrollTo(0,0); }
+  toast(msg){ this.setState({ toast:msg, toastAt:Date.now() }); const t=Date.now(); setTimeout(()=>{ if(this.state.toastAt===t)this.setState({toast:''}); },1700); }
+
+  /* ---------------- permissions ---------------- */
+  _canWrite(){ if(this.state.role==='viewer'){ this.toast('View-only access — ask an admin'); return false; } return true; }
+  _canDelete(){ if(this.state.role!=='admin'){ this.toast('Only an admin can delete'); return false; } return true; }
+
+  /* ---------------- mutations ---------------- */
+  async setAttendance(id,date,patch){ if(!this._canWrite())return; await this._db.setAttendance(id,date,patch); }
+  async togglePresent(id,date){ const a=(this._idx().attByMember[id]||{})[date]; await this.setAttendance(id,date,{present:!(a&&a.present)}); }
+  async setMinutes(id,date,val){ await this.setAttendance(id,date,{minutes:val}); }
+  async setHeadcount(date,val){ if(!this._canWrite())return; await this._db.setService(date,{headcount:val}); }
+  async setGuests(date,arr){ if(!this._canWrite())return; await this._db.setService(date,{guestRoll:arr}); }
+  async _addNote(memberId){ if(!this._canWrite())return; const text=(this.state.noteText||'').trim(); if(!text)return; await this._db.addNote({memberId,type:this.state.noteType,text,by:this.state.userEmail}); this.setState({noteText:''}); this.toast('Follow-up logged'); }
+  async _deleteNote(id){ if(!this._canWrite())return; await this._db.deleteNote(id); this.toast('Note removed'); }
+  async _addGiving(){ if(!this._canWrite())return; const amt=+this.state.giveAmount; if(!(amt>0)){ this.toast('Enter an amount'); return; } await this._db.addGiving({date:this.state.giveDate,category:this.state.giveCategory,amount:amt}); this.setState({giveAmount:''}); this.toast('Giving recorded'); }
+  async _deleteGiving(id){ if(!this._canDelete())return; await this._db.deleteGiving(id); this.toast('Entry removed'); }
+  async _setMemberHousehold(memberId,householdId){ if(!this._canWrite())return; await this._db.updateMember(memberId,{householdId:householdId||null}); this.toast('Household updated'); }
+  async _setUserRole(uid,role){ await this._db.setUserRole(uid,role); this.toast('Role updated'); }
+
+  /* ---------------- ui style dictionary ---------------- */
+  ui() {
+    if (this._ui) return this._ui;
+    const card='background:#fffdfa;border:1px solid #e7dcc9;border-radius:16px;padding:19px;box-shadow:0 1px 2px rgba(50,20,60,.05),0 10px 30px rgba(50,20,60,.06)';
+    this._ui = {
+      appBg:'min-height:100vh;background:radial-gradient(1100px 560px at 90% -8%,#fbf4e6 0%,transparent 58%),radial-gradient(900px 520px at -6% 108%,#f0e6d4 0%,transparent 52%),#f6f1ea',
+      sidebar:'width:250px;flex:none;position:sticky;top:0;height:100vh;background:linear-gradient(180deg,#350f53,#26093f 70%);color:#efe6f5;display:flex;flex-direction:column;padding:22px 15px;box-shadow:6px 0 30px rgba(38,9,63,.18);z-index:20',
+      crest:'width:64px;height:64px;border-radius:50%;background:#fff;color:#4a1d6e;display:grid;place-items:center;font-family:\'Fraunces\',serif;font-weight:600;font-size:20px;box-shadow:0 8px 26px rgba(0,0,0,.35),0 0 0 2px #cda434',
+      modeBadge:'font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;text-align:center;padding:7px;border-radius:9px;background:rgba(205,164,52,.16);color:#ecc868',
+      card, panel:card, panelGold:card+';border-color:#ecc868;background:linear-gradient(160deg,#fffdf7,#faf3e0)',
+      panelH:'display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:14px',
+      h3:'font-family:\'Fraunces\',serif;font-weight:600;font-size:19px;margin:0',
+      muted:'color:#928697;font-size:12.5px',
+      intro:'font-size:14px;color:#5f5366;max-width:82ch;margin:0 0 22px;line-height:1.55',
+      btn:'font-weight:600;font-size:13.5px;padding:9px 17px;border-radius:10px;border:none;background:#4a1d6e;color:#fff;cursor:pointer',
+      btnGhost:'font-weight:600;font-size:13px;padding:8px 15px;border-radius:10px;border:1.5px solid #e7dcc9;background:transparent;color:#2c2233;cursor:pointer',
+      btnDanger:'font-weight:600;font-size:13px;padding:8px 15px;border-radius:10px;border:1.5px solid #e6c4bd;background:transparent;color:#b5302a;cursor:pointer',
+      btnMini:'font-weight:600;font-size:12px;padding:7px 12px;border-radius:8px;border:none;background:#a47d1f;color:#fff;cursor:pointer;width:100%',
+      input:'font-size:13.5px;color:#2c2233;background:#fffdfa;border:1.5px solid #e7dcc9;border-radius:10px;padding:9px 12px;outline:none',
+      select:'font-size:13.5px;font-weight:600;color:#2c2233;background:#fffdfa;border:1.5px solid #e7dcc9;border-radius:10px;padding:8px 11px;cursor:pointer;outline:none',
+      lbl:'display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#928697;font-weight:600;margin-bottom:5px',
+      tblWrap:'overflow:auto;border:1px solid #e7dcc9;border-radius:14px;background:#fffdfa;box-shadow:0 10px 30px rgba(50,20,60,.06)',
+      table:'border-collapse:collapse;width:100%;font-size:13.5px',
+      th:'position:sticky;top:0;background:#efe7d8;text-align:left;font-weight:600;color:#5f5366;font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:11px 14px;border-bottom:1.5px solid #e7dcc9;white-space:nowrap;z-index:2',
+      td:'padding:11px 14px;color:#2c2233',
+      tdName:'padding:11px 14px;font-weight:600;color:#2c2233',
+      regNameHead:'position:sticky;left:0;top:0;z-index:3;background:#efe7d8;text-align:left;padding:9px 12px;min-width:170px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#5f5366;font-weight:600;border-bottom:1.5px solid #e7dcc9',
+      regNameCell:'position:sticky;left:0;background:#fffdfa;font-weight:600;padding:8px 12px;min-width:170px;z-index:1;border-right:1.5px solid #e7dcc9;border-bottom:1px solid #f1e9da;font-size:12.5px',
+      guestChip:'display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:500;padding:6px 11px;border-radius:8px;background:#eef4f2;border:1px solid #cfe0da;color:#2f8079',
+      chipShow:'font-size:12px;font-weight:500;padding:5px 10px;border-radius:8px;background:#eef1ea;border:1px solid #d5ddca;color:#4f6147;cursor:pointer',
+      chipRisk:'font-size:12px;font-weight:500;padding:5px 10px;border-radius:8px;background:#f7ece6;border:1px solid #e6cdbf;color:#b25636;cursor:pointer',
+      pastorCard:'background:#fffdfa;border:1px solid #e7dcc9;border-radius:16px;box-shadow:0 10px 30px rgba(50,20,60,.06);overflow:hidden',
+      pastorHead:'padding:16px 18px;background:linear-gradient(120deg,#4a1d6e,#350f53);display:flex;justify-content:space-between;align-items:center;gap:12px',
+      mini:'flex:1;background:#f6f1ea;border-radius:11px;padding:11px 13px;border:1px solid #e7dcc9',
+      miniK:'font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:#928697;font-weight:600',
+      miniV:'font-family:\'Fraunces\',serif;font-size:21px;font-weight:600;margin-top:3px',
+    };
+    return this._ui;
+  }
+  _statCard(accent){ return this.ui().card+';position:relative;border-left:4px solid '+accent; }
+  _badge(status){ return 'display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:999px;color:#fff;white-space:nowrap;background:'+this.STATUS_COLOR(status); }
+
+  /* ==================== RENDER ==================== */
+  renderVals() {
+    const ui = this.ui();
+    const base = { ui, ready:this.state.ready, notReady:!this.state.ready,
+      showSpinner: !this.state.ready && !this.state.needsLogin,
+      showLogin: !this.state.ready && this.state.needsLogin,
+      login: {
+        email: this.state.loginEmail, pass: this.state.loginPass,
+        hasError: !!this.state.loginErr, error: this.state.loginErr,
+        onEmail: (e)=>this.setState({loginEmail:e.target.value}),
+        onPass: (e)=>this.setState({loginPass:e.target.value}),
+        onKey: (e)=>{ if(e.key==='Enter')this._login(); },
+        onSubmit: ()=>this._login(),
+        onDemo: ()=>{ this.setState({needsLogin:false}); this._boot(true); },
+      },
+      canSignOut: this.state.mode==='firebase',
+      onSignOut: ()=>this._signOut(),
+    };
+    if (!this.state.ready) return Object.assign(base, { toastShow:false, modalOpen:false });
+
+    const S = this.state, I = this._idx();
+    const canAdmin = S.role === 'admin';
+    const canEdit = S.role !== 'viewer';
+    const NAV = [
+      ['dashboard','Dashboard','◆'], ['sunday','This Sunday','✦'], ['members','Members','◉'], ['households','Households','⌂'],
+      ['register','Register','▤'], ['firsttimers','First Timers','✧'], ['followup','Follow-Up','◔'], ['pastors','Pastors','✚'],
+      ['giving','Giving','◈'], ['reports','Reports','▦']
+    ];
+    if (canAdmin) NAV.push(['team','Team','⚑']);
+    const titles = { dashboard:['Insight','Dashboard'], sunday:['Record','This Sunday'], members:['People','Members'], households:['People','Households'],
+      register:['People','Attendance Register'], firsttimers:['Growth','First Timers'], followup:['Care','Follow-Up'], pastors:['Care','Pastor Engagement'],
+      giving:['Stewardship','Giving & Offerings'], reports:['Export','Reports & Download'], team:['Admin','Team & Access'] };
+    const nav = NAV.map(([key,label,glyph]) => {
+      const active = S.screen===key;
+      const style = 'display:flex;align-items:center;gap:11px;font-size:14px;font-weight:500;border:none;border-radius:11px;padding:11px 13px;cursor:pointer;text-align:left;width:100%;transition:.15s;'
+        + (active ? 'background:linear-gradient(100deg,rgba(205,164,52,.22),rgba(205,164,52,.06));color:#fff' : 'background:transparent;color:#d9cce4');
+      return { key, label, glyph, style, onClick:()=>this.go(key) };
+    });
+    Object.assign(base, {
+      modeLabel: this.state.mode==='firebase' ? 'Live · Firebase' : 'Demo · local data',
+      todayLabel: this._fmtFull(this._todayISO()),
+      nav, crumb: titles[S.screen][0], title: titles[S.screen][1],
+      isDashboard:S.screen==='dashboard', isSunday:S.screen==='sunday', isMembers:S.screen==='members',
+      isRegister:S.screen==='register', isFirstTimers:S.screen==='firsttimers', isFollowup:S.screen==='followup', isPastors:S.screen==='pastors', isReports:S.screen==='reports',
+      isHouseholds:S.screen==='households', isGiving:S.screen==='giving', isTeam:S.screen==='team',
+      canEdit, canAdmin, roleLabel: S.role.charAt(0).toUpperCase()+S.role.slice(1),
+      toastShow: !!S.toast, toast: S.toast,
+    });
+
+    if (base.isDashboard) base.dash = this._vmDashboard(I);
+    if (base.isSunday) base.sunday = this._vmSunday(I);
+    if (base.isMembers) base.members = this._vmMembers(I);
+    if (base.isRegister) base.register = this._vmRegister(I);
+    if (base.isFirstTimers) base.ft = this._vmFirstTimers(I);
+    if (base.isFollowup) base.followup = this._vmFollowup(I);
+    if (base.isPastors) base.pastors = this._vmPastors(I);
+    if (base.isReports) base.reports = this._vmReports(I);
+    if (base.isHouseholds) base.households = this._vmHouseholds(I);
+    if (base.isGiving) base.giving = this._vmGiving(I);
+    if (base.isTeam) base.team = this._vmTeam(I);
+
+    Object.assign(base, this._vmModal(I));
+    return base;
+  }
+
+  /* ---------- dashboard vm ---------- */
+  _vmDashboard(I){
+    const mem = I.snap.members, total = mem.length;
+    const sc = {}; mem.forEach(m=>{ sc[m.status]=(sc[m.status]||0)+1; });
+    const engaged = mem.filter(m=>['Growing','Active','Worker','Covenant'].includes(m.status)).length;
+    const workers = mem.filter(m=>m.status==='Worker');
+    const wRate = workers.length?Math.round(workers.reduce((a,m)=>a+this._rate(m.id),0)/workers.length*100):0;
+    const atRisk = mem.filter(m=>this._weeksSince(m.id)>=4);
+    const gv = I.snap.services.map(s=>s.headcount).filter(v=>v!=null);
+    const avgGen = gv.length?Math.round(gv.reduce((a,b)=>a+b,0)/gv.length):0;
+    const ft = I.snap.firstTimers, ftRet = ft.filter(f=>this._ftReturned(f,I)).length;
+    const cards = [
+      ['Total Members', total, 'on the roll', '#5e2a87'],
+      ['Avg. Sunday Attendance', avgGen, gv.length+' services', '#2f8079'],
+      ['Engaged Members', engaged, this._pct(engaged,total)+' of roll', '#5f7355'],
+      ['First-Timer Retention', this._pct(ftRet,ft.length), ftRet+' of '+ft.length+' returned', '#2f8079'],
+      ['Worker Reliability', wRate+'%', 'avg worker attendance', '#cb9a2f'],
+      ['Needs Follow-Up', atRisk.length, 'not seen 4+ services', '#c2683f'],
+    ].map(c=>({ k:c[0], v:c[1], d:c[2], style:this._statCard(c[3]) }));
+    const gvSorted = I.snap.services.slice().sort((a,b)=>a.date.localeCompare(b.date)).filter(s=>s.headcount!=null);
+    const maxG = Math.max(1, ...gvSorted.map(s=>s.headcount));
+    const trend = gvSorted.map(s=>({ label:this._fmt(s.date), title:this._fmtFull(s.date)+': '+s.headcount, barStyle:'height:'+(s.headcount/maxG*100)+'%' }));
+    const statusOrder = ['Growing','Active','Worker','Covenant','Inactive','Drifting','Unclassified'];
+    const status = statusOrder.filter(s=>sc[s]).map(s=>({ label:s, n:sc[s], badge:this._badge(s), barStyle:'width:'+(sc[s]/total*100)+'%;background:'+this.STATUS_COLOR(s) }));
+    const faithfulArr = mem.map(m=>({m,r:this._rate(m.id),sp:this._servicesPresent(m.id)})).filter(x=>x.sp>0).sort((a,b)=>b.r-a.r||b.sp-a.sp).slice(0,6);
+    const faithful = faithfulArr.map(x=>({ name:x.m.name, pct:Math.round(x.r*100)+'%', barStyle:'width:'+(x.r*100)+'%', onOpen:()=>this.openMember(x.m.id) }));
+    const risk = atRisk.slice(0,10).map(m=>({ name:m.name, ago:(this._weeksSince(m.id)>=99?'never':this._weeksSince(m.id)+'w'), onOpen:()=>this.openMember(m.id) }));
+    return { cards, trend, status, faithful, risk, hasRisk:atRisk.length>0, noRisk:atRisk.length===0 };
+  }
+
+  /* ---------- this sunday vm ---------- */
+  _vmSunday(I){
+    const date = this.state.svcDate;
+    const svc = I.serviceByDate[date] || { headcount:null, guestRoll:[] };
+    const guests = (svc.guestRoll||[]);
+    let markedCount=0; const atd=I.attByDate[date]||{};
+    Object.values(atd).forEach(a=>{ if(a.present)markedCount++; });
+    const search = this.state.sundaySearch.toLowerCase();
+    let mem = I.snap.members.slice().sort((a,b)=>a.name.localeCompare(b.name));
+    if(search) mem = mem.filter(m=>m.name.toLowerCase().includes(search));
+    const roll = mem.map(m=>{
+      const a = atd[m.id]; const present = !!(a&&a.present);
+      return {
+        name:m.name, statusLabel:m.status, present, minutes:(a&&a.minutes!=null)?a.minutes:'',
+        rowStyle:'display:flex;align-items:center;gap:12px;padding:9px 4px;border-bottom:1px solid #f6efe2'+(present?';background:#f3f7f4':''),
+        toggleStyle:'width:30px;height:30px;flex:none;border-radius:8px;border:1.5px solid '+(present?'#5f7355':'#e0d6c4')+';background:'+(present?'#5f7355':'#fff')+';color:'+(present?'#fff':'#c9bda9')+';font-size:15px;cursor:pointer;display:grid;place-items:center',
+        toggleGlyph: present?'✓':'',
+        onToggle:()=>this.togglePresent(m.id,date),
+        onMinutes:(e)=>this.setMinutes(m.id,date,e.target.value),
+        minKey:(e)=>{ if(e.key==='Enter')e.target.blur(); },
+      };
+    });
+    const guestVms = guests.map((g,i)=>({ name:g, onRemove:()=>{ const arr=guests.slice(); arr.splice(i,1); this.setGuests(date,arr); } }));
+    const suggested = markedCount + guests.length;
+    return {
+      dateISO:date, dateLabel:this._fmtFull(date),
+      statusLine: (svc.headcount!=null||markedCount>0||guests.length>0)?'Recording in progress':'New service — nothing recorded yet',
+      headcount: svc.headcount!=null?svc.headcount:'',
+      markedCount, guestCount:guests.length, suggested,
+      roll, guests:guestVms, hasGuests:guests.length>0, noGuests:guests.length===0,
+      search:this.state.sundaySearch, guestInput:this.state.guestInput,
+      prev:()=>this._shiftSunday(-7), next:()=>this._shiftSunday(7),
+      pick:(e)=>{ if(e.target.value)this.setState({svcDate:e.target.value}); },
+      setHeadcount:(e)=>this.setHeadcount(date,e.target.value),
+      hcKey:(e)=>{ if(e.key==='Enter')e.target.blur(); },
+      useSuggested:()=>{ this.setHeadcount(date,suggested); this.toast('Headcount set to '+suggested); },
+      searchType:(e)=>this.setState({sundaySearch:e.target.value}),
+      guestType:(e)=>this.setState({guestInput:e.target.value}),
+      guestKey:(e)=>{ if(e.key==='Enter')this._addGuest(date,guests); },
+      addGuest:()=>this._addGuest(date,guests),
+    };
+  }
+  _addGuest(date,guests){ const nm=(this.state.guestInput||'').trim(); if(!nm)return; this.setGuests(date,guests.concat([nm])); this.setState({guestInput:''}); }
+  _shiftSunday(days){ const d=new Date(this.state.svcDate+'T00:00'); d.setDate(d.getDate()+days); this.setState({svcDate:d.getFullYear()+'-'+this._pad(d.getMonth()+1)+'-'+this._pad(d.getDate())}); }
+
+  /* ---------- members vm ---------- */
+  _vmMembers(I){
+    const FILTERS=['All','Growing','Worker','Active','Covenant','Inactive','Drifting'];
+    const filters = FILTERS.map(f=>({ label:f, onClick:()=>this.setState({memFilter:f}),
+      style:'font-size:12.5px;font-weight:500;padding:7px 13px;border-radius:999px;border:1.5px solid '+(this.state.memFilter===f?'#4a1d6e':'#e7dcc9')+';background:'+(this.state.memFilter===f?'#4a1d6e':'#fffdfa')+';color:'+(this.state.memFilter===f?'#fff':'#5f5366')+';cursor:pointer' }));
+    let rows = I.snap.members.slice();
+    if(this.state.memFilter!=='All') rows = rows.filter(m=>m.status===this.state.memFilter);
+    if(this.state.memSearch) rows = rows.filter(m=>m.name.toLowerCase().includes(this.state.memSearch.toLowerCase()));
+    rows.sort((a,b)=>a.name.localeCompare(b.name));
+    const total=I.dates.length;
+    const rowVms = rows.map(m=>({
+      name:m.name, status:m.status, badge:this._badge(m.status),
+      pastor:(I.pastorsById[m.pastorId]&&I.pastorsById[m.pastorId].name)||'—',
+      location:m.location||'—', services:this._servicesPresent(m.id)+'/'+total,
+      rate:Math.round(this._rate(m.id)*100)+'%', lastSeen:this._fmtFull(this._lastSeen(m.id)),
+      onOpen:()=>this.openMember(m.id),
+    }));
+    return { filters, rows:rowVms, search:this.state.memSearch, searchType:(e)=>this.setState({memSearch:e.target.value}),
+      count:rows.length+' member'+(rows.length===1?'':'s')+' shown', onAdd:()=>this.openAddMember() };
+  }
+
+  /* ---------- register vm ---------- */
+  _vmRegister(I){
+    // Years span from the earliest data year (or 2026) through two years past
+    // whichever is later: today or the latest recorded date. So the register
+    // always shows the current year and rolls forward automatically — no cap.
+    const yearsSet={}; I.dates.forEach(d=>yearsSet[+d.slice(0,4)]=1);
+    const dataYears=Object.keys(yearsSet).map(Number);
+    const startY=Math.min(2026, ...(dataYears.length?dataYears:[2026]));
+    const nowY=new Date().getFullYear();
+    const endY=Math.max(nowY, ...(dataYears.length?dataYears:[2026]))+2;
+    for(let y=startY;y<=endY;y++) yearsSet[y]=1;
+    const years = Object.keys(yearsSet).map(Number).sort().map(y=>({ label:''+y, onClick:()=>this.setState({regYear:y}),
+      style:'font-size:12.5px;font-weight:500;padding:7px 13px;border-radius:999px;border:1.5px solid '+(this.state.regYear===y?'#4a1d6e':'#e7dcc9')+';background:'+(this.state.regYear===y?'#4a1d6e':'#fffdfa')+';color:'+(this.state.regYear===y?'#fff':'#5f5366')+';cursor:pointer' }));
+    const days = this._sundaysOfYear(this.state.regYear);
+    const today = this._todayISO();
+    const dates = days.map(iso=>({ label:this._fmt(iso), headStyle:'background:#efe7d8;font-size:9.5px;padding:7px 5px;writing-mode:vertical-rl;transform:rotate(180deg);height:88px;white-space:nowrap;border-bottom:1.5px solid #e7dcc9;color:'+(iso>today?'#b3a99e':'#5f5366') }));
+    let mem = I.snap.members.slice().sort((a,b)=>a.name.localeCompare(b.name));
+    if(this.state.regSearch) mem = mem.filter(m=>m.name.toLowerCase().includes(this.state.regSearch.toLowerCase()));
+    const rows = mem.map(m=>{
+      const rec = I.attByMember[m.id]||{};
+      const cells = days.map(iso=>{
+        const a=rec[iso]; const v=a?(a.present?1:0):null;
+        const bg = v===1?'rgba(95,115,85,.22)':(v===0?'rgba(194,104,63,.14)':'transparent');
+        const col = v===1?'#5f7355':(v===0?'#c2683f':'#dcd2c2');
+        return { glyph: v===1?'✓':(v===0?'·':''), onClick:()=>this.togglePresent(m.id,iso),
+          style:'width:34px;height:32px;display:grid;place-items:center;cursor:pointer;font-size:13px;font-weight:700;background:'+bg+';color:'+col };
+      });
+      return { name:m.name, cells };
+    });
+    return { years, dates, rows, search:this.state.regSearch, searchType:(e)=>this.setState({regSearch:e.target.value}) };
+  }
+  _sundaysOfYear(y){ const out=[]; const d=new Date(Date.UTC(y,0,1)); while(d.getUTCDay()!==0)d.setUTCDate(d.getUTCDate()+1); while(d.getUTCFullYear()===y){ out.push(d.toISOString().slice(0,10)); d.setUTCDate(d.getUTCDate()+7); } return out; }
+
+  /* ---------- first timers vm ---------- */
+  _ftReturned(f,I){ if((f.visits||[]).length>1)return true; if(f.linkedMemberId){ const rec=I.attByMember[f.linkedMemberId]||{}; const first=f.firstVisit; return Object.keys(rec).some(d=>rec[d].present&&(!first||d>first)); } return false; }
+  _vmFirstTimers(I){
+    const ft=I.snap.firstTimers; const ret=ft.filter(f=>this._ftReturned(f,I));
+    const cards=[['Total First Timers',ft.length,'recorded','#5e2a87'],['Returned',ret.length,this._pct(ret.length,ft.length)+' retention','#5f7355'],['Never Returned',ft.length-ret.length,'one-time visits','#c2683f'],['Active Inviters',new Set(ft.map(f=>f.invitedBy).filter(Boolean)).size,'bringing guests','#2f8079']]
+      .map(c=>({k:c[0],v:c[1],d:c[2],style:this._statCard(c[3])}));
+    const inv={}; ft.forEach(f=>{ const k=f.invitedBy||'Unknown / not recorded'; inv[k]=(inv[k]||0)+1; });
+    const invSorted=Object.entries(inv).sort((a,b)=>b[1]-a[1]).slice(0,8); const maxI=Math.max(1,...invSorted.map(x=>x[1]));
+    const inviters=invSorted.map(([n,c])=>({name:n,n:c,barStyle:'width:'+(c/maxI*100)+'%'}));
+    const rows=ft.slice().sort((a,b)=>(a.firstVisit||'9').localeCompare(b.firstVisit||'9')).map(f=>{ const r=this._ftReturned(f,I);
+      return { name:f.name, invitedBy:f.invitedBy||'—', firstVisit:this._fmtFull(f.firstVisit), times:(f.visits||[]).length,
+        tag:r?'Returned':'Not yet', tagStyle:'font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;background:'+(r?'rgba(95,115,85,.18)':'rgba(194,104,63,.16)')+';color:'+(r?'#5f7355':'#c2683f'),
+        onOpen:()=>this.openFirstTimer(f.id) }; });
+    return { cards, inviters, rows, onAdd:()=>this.openAddFirstTimer() };
+  }
+
+  /* ---------- follow-up vm ---------- */
+  _vmFollowup(I){
+    const arr=I.snap.members.map(m=>({m,ws:this._weeksSince(m.id),sp:this._servicesPresent(m.id),ls:this._lastSeen(m.id)})).sort((a,b)=>b.ws-a.ws);
+    const need=arr.filter(x=>x.ws>=4).length;
+    const cards=[['Need Follow-Up',need,'not seen 4+ services','#c2683f'],['Seen Recently',arr.filter(x=>x.ws<3&&x.sp>0).length,'within last 2 services','#5f7355'],['Never Recorded',arr.filter(x=>x.sp===0).length,'no attendance yet','#9a8d86']]
+      .map(c=>({k:c[0],v:c[1],d:c[2],style:this._statCard(c[3])}));
+    const rows=arr.map(({m,ws,sp,ls})=>{ let flag,c; if(sp===0){flag='Never seen';c='#c2683f';} else if(ws>=6){flag=ws+' services ago';c='#c2683f';} else if(ws>=3){flag=ws+' services ago';c='#cb9a2f';} else {flag='Recent';c='#5f7355';}
+      return { name:m.name, status:m.status, badge:this._badge(m.status), pastor:(I.pastorsById[m.pastorId]&&I.pastorsById[m.pastorId].name)||'—', lastSeen:this._fmtFull(ls),
+        flag, tagStyle:'font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;color:#fff;background:'+c, onOpen:()=>this.openMember(m.id) }; });
+    return { cards, rows };
+  }
+
+  /* ---------- pastors vm ---------- */
+  _vmPastors(I){
+    const groups={}; I.snap.members.forEach(m=>{ if(!m.pastorId)return; (groups[m.pastorId]=groups[m.pastorId]||[]).push(m); });
+    const cards=I.snap.pastors.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(p=>{
+      const pid=p.id; const list=groups[pid]||[];
+      const showing=list.filter(m=>this._weeksSince(m.id)<3&&this._servicesPresent(m.id)>0);
+      const quiet=list.filter(m=>!(this._weeksSince(m.id)<3&&this._servicesPresent(m.id)>0));
+      const rate=list.length?Math.round(list.reduce((a,m)=>a+this._rate(m.id),0)/list.length*100):0;
+      return { name:p.name, count:list.length, showing:showing.length+'/'+list.length,
+        rate:rate+'%', engaged:this._pct(showing.length,list.length), onEdit:()=>this.openEditPastor(pid),
+        showList:showing.sort((a,b)=>this._rate(b.id)-this._rate(a.id)).map(m=>({name:m.name,onOpen:()=>this.openMember(m.id)})),
+        quietList:quiet.sort((a,b)=>this._weeksSince(b.id)-this._weeksSince(a.id)).map(m=>({name:m.name,ago:(this._weeksSince(m.id)>=99?'never':this._weeksSince(m.id)+'w'),onOpen:()=>this.openMember(m.id)})) };
+    });
+    return { cards, onAdd:()=>this.openAddPastor() };
+  }
+
+  /* ---------- reports vm ---------- */
+  _vmReports(I){
+    const type=this.state.reportType;
+    const defs=[['attendance','Attendance Summary'],['roster','Member Roster'],['firsttimers','First Timers'],['followup','Follow-Up List']];
+    const tabs=defs.map(([k,label])=>({ label, onClick:()=>this.setState({reportType:k}),
+      style:'font-size:13px;font-weight:600;padding:9px 15px;border-radius:10px;border:1.5px solid '+(type===k?'#4a1d6e':'#e7dcc9')+';background:'+(type===k?'#4a1d6e':'#fffdfa')+';color:'+(type===k?'#fff':'#5f5366')+';cursor:pointer' }));
+    let columns=[], rows=[], title='', subtitle='';
+    const pname=id=>(I.pastorsById[id]&&I.pastorsById[id].name)||'';
+    if(type==='attendance'){
+      title='Attendance Summary'; subtitle='Every recorded service — headcount, members present and guests';
+      columns=['Sunday','Headcount','Members Present','Guests'];
+      rows=I.snap.services.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(s=>{ const atd=I.attByDate[s.date]||{}; let pr=0; Object.values(atd).forEach(a=>{ if(a.present)pr++; }); return [this._fmtFull(s.date), s.headcount==null?'—':s.headcount, pr, (s.guestRoll||[]).length]; });
+    } else if(type==='roster'){
+      title='Member Roster'; subtitle='All members with contact details and attendance';
+      columns=['Name','Status','Pastor','Phone','Location','Services','Rate','Last Seen'];
+      const total=I.dates.length;
+      rows=I.snap.members.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(m=>[m.name,m.status,pname(m.pastorId),m.phone||'',m.location||'',this._servicesPresent(m.id)+'/'+total,Math.round(this._rate(m.id)*100)+'%',this._fmtFull(this._lastSeen(m.id))]);
+    } else if(type==='firsttimers'){
+      title='First Timers'; subtitle='Visitors, who invited them, and whether they returned';
+      columns=['Name','Invited By','Contact','First Visit','Times Seen','Returned'];
+      rows=I.snap.firstTimers.slice().sort((a,b)=>(a.firstVisit||'9').localeCompare(b.firstVisit||'9')).map(f=>[f.name,f.invitedBy||'',f.contacts||'',this._fmtFull(f.firstVisit),(f.visits||[]).length,this._ftReturned(f,I)?'Yes':'No']);
+    } else {
+      title='Follow-Up List'; subtitle='Members ranked by how overdue a visit is';
+      columns=['Name','Status','Pastor','Last Seen','Services Since'];
+      rows=I.snap.members.map(m=>({m,ws:this._weeksSince(m.id),sp:this._servicesPresent(m.id)})).sort((a,b)=>b.ws-a.ws).map(({m,ws,sp})=>[m.name,m.status,pname(m.pastorId),this._fmtFull(this._lastSeen(m.id)),sp===0?'never seen':ws]);
+    }
+    const bodyRows=rows.map(r=>({ cells:r.map(c=>({ v:(c==null?'':String(c)) })) }));
+    return { tabs, title, subtitle, columns, rows:bodyRows, count:rows.length+' rows',
+      onCSV:()=>this._downloadCSV(title,columns,rows), onPrint:()=>this._print() };
+  }
+  _downloadCSV(title,columns,rows){
+    const esc=v=>{ const s=(v==null?'':String(v)); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
+    const csv=[columns.map(esc).join(',')].concat(rows.map(r=>r.map(esc).join(','))).join('\r\n');
+    const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+    const url=URL.createObjectURL(blob); const a=document.createElement('a');
+    a.href=url; a.download='KRE '+title+' '+this._todayISO()+'.csv'; document.body.appendChild(a); a.click();
+    document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),1000); this.toast('CSV downloaded');
+  }
+  _print(){ if(typeof window!=='undefined') window.print(); }
+  _money(v){ return '₵' + Number(v||0).toLocaleString(undefined,{maximumFractionDigits:2}); }
+
+  /* ---------- households vm ---------- */
+  _vmHouseholds(I){
+    const groups={}; I.snap.members.forEach(m=>{ if(m.householdId)(groups[m.householdId]=groups[m.householdId]||[]).push(m); });
+    const cards=I.snap.households.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(h=>({
+      name:h.name, count:(groups[h.id]||[]).length+' members', onEdit:()=>this.openEditHousehold(h.id),
+      members:(groups[h.id]||[]).sort((a,b)=>a.name.localeCompare(b.name)).map(m=>({name:m.name,onOpen:()=>this.openMember(m.id)})),
+      empty:!(groups[h.id]&&groups[h.id].length)
+    }));
+    return { cards, onAdd:()=>this.openAddHousehold(), unassigned:I.snap.members.filter(m=>!m.householdId).length,
+      hasHouseholds:cards.length>0, noHouseholds:cards.length===0 };
+  }
+
+  /* ---------- giving vm ---------- */
+  _vmGiving(I){
+    const g=(I.snap.giving||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    const total=g.reduce((a,x)=>a+(+x.amount||0),0);
+    const byCat={}; g.forEach(x=>{ byCat[x.category]=(byCat[x.category]||0)+(+x.amount||0); });
+    const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+    const maxCat=Math.max(1,...cats.map(c=>c[1]));
+    const rows=g.map(x=>({ date:this._fmtFull(x.date), category:x.category, amount:this._money(x.amount), onDelete:()=>this._deleteGiving(x.id), canDelete:this.state.role==='admin' }));
+    const cards=[['Total Recorded',this._money(total),g.length+' entries','#5f7355'],['Entries',''+g.length,'giving records','#5e2a87'],['Categories',''+cats.length,'types tracked','#2f8079']].map(c=>({k:c[0],v:c[1],d:c[2],style:this._statCard(c[3])}));
+    const catBars=cats.map(([n,v])=>({ name:n, amount:this._money(v), barStyle:'width:'+(v/maxCat*100)+'%' }));
+    const catOpts=['Offering','Tithe','Seed','Thanksgiving','Pledge','Other'];
+    return { cards, rows, catBars, hasRows:rows.length>0, noRows:rows.length===0,
+      date:this.state.giveDate, amount:this.state.giveAmount, category:this.state.giveCategory,
+      catOptions:catOpts.map(c=>({value:c,label:c})),
+      onDate:(e)=>this.setState({giveDate:e.target.value}), onAmount:(e)=>this.setState({giveAmount:e.target.value}),
+      onCategory:(e)=>this.setState({giveCategory:e.target.value}), onKey:(e)=>{ if(e.key==='Enter')this._addGiving(); }, onAdd:()=>this._addGiving() };
+  }
+
+  /* ---------- team vm ---------- */
+  _vmTeam(I){
+    const roles=['admin','editor','viewer'];
+    const rows=(I.snap.users||[]).slice().sort((a,b)=>(a.email||'').localeCompare(b.email||'')).map(u=>({
+      email:u.email||u.id, role:u.role||'viewer', roleOpts:roles.map(r=>({value:r,label:r.charAt(0).toUpperCase()+r.slice(1)})),
+      onRole:(e)=>this._setUserRole(u.id,e.target.value)
+    }));
+    return { rows, hasUsers:rows.length>0, noUsers:rows.length===0 };
+  }
+
+  /* ==================== MODALS ==================== */
+  openMember(id){ this.setState({ modal:{ type:'profile', id } }); }
+  openAddMember(){ this.setState({ modal:{ type:'memberForm', id:null }, form:{ name:'',phone:'',email:'',location:'',status:'Growing',pastorId:'',householdId:'' }, formErr:'' }); }
+  openEditMember(id){ const m=this._idx().membersById[id]; this.setState({ modal:{ type:'memberForm', id }, form:{ name:m.name,phone:m.phone||'',email:m.email||'',location:m.location||'',status:m.status,pastorId:m.pastorId||'',householdId:m.householdId||'' }, formErr:'' }); }
+  openAddFirstTimer(){ this.setState({ modal:{ type:'ftForm', id:null }, form:{ name:'',invitedBy:'',contacts:'',firstVisit:this._idx().dates[this._idx().dates.length-1]||this._latestSunday() }, formErr:'' }); }
+  openFirstTimer(id){ const f=this._idx().snap.firstTimers.find(x=>x.id===id); this.setState({ modal:{ type:'ftForm', id }, form:{ name:f.name,invitedBy:f.invitedBy||'',contacts:f.contacts||'',firstVisit:f.firstVisit||'' }, formErr:'' }); }
+  openAddPastor(){ this.setState({ modal:{ type:'pastorForm', id:null }, form:{ name:'' }, formErr:'' }); }
+  openEditPastor(id){ const p=this._idx().pastorsById[id]; this.setState({ modal:{ type:'pastorForm', id }, form:{ name:p.name }, formErr:'' }); }
+  openAddHousehold(){ this.setState({ modal:{ type:'householdForm', id:null }, form:{ name:'' }, formErr:'' }); }
+  openEditHousehold(id){ const h=this._idx().householdsById[id]; this.setState({ modal:{ type:'householdForm', id }, form:{ name:h.name }, formErr:'' }); }
+  async _saveHouseholdForm(){ if(!this._canWrite())return; const name=(this.state.form.name||'').trim(); if(!name){ this.setState({formErr:'Name cannot be empty.'}); return; } if(this.state.modal.id) await this._db.updateHousehold(this.state.modal.id,{name}); else await this._db.addHousehold(name); this.closeModal(); this.setState({screen:'households'}); this.toast('Saved'); }
+  async _deleteHousehold(){ if(!this._canDelete())return; const id=this.state.modal.id; if(!id)return; await this._db.deleteHousehold(id); this.closeModal(); this.toast('Household removed'); }
+  closeModal(){ this.setState({ modal:null, formErr:'' }); }
+  _setForm(k,v){ this.setState({ form:Object.assign({},this.state.form,{[k]:v}) }); }
+
+  async _saveStatus(id,status){ if(!this._canWrite())return; await this._db.updateMember(id,{status}); this.toast('Status updated'); }
+  async _savePastor(id,pastorId){ if(!this._canWrite())return; await this._db.updateMember(id,{pastorId:pastorId||null}); this.toast('Pastor updated'); }
+  async _saveMemberForm(){
+    if(!this._canWrite())return;
+    const f=this.state.form; const name=(f.name||'').trim();
+    if(!name){ this.setState({formErr:'Name cannot be empty.'}); return; }
+    const dup=this._idx().snap.members.find(m=>m.name.toLowerCase().replace(/[^a-z0-9]/g,'')===name.toLowerCase().replace(/[^a-z0-9]/g,'')&&m.id!==this.state.modal.id);
+    if(dup){ this.setState({formErr:'Another member already has that name.'}); return; }
+    const patch={ name, phone:(f.phone||'').trim()||null, email:(f.email||'').trim()||null, location:(f.location||'').trim()||null, status:f.status||'Growing', pastorId:f.pastorId||null, householdId:f.householdId||null };
+    if(this.state.modal.id){ await this._db.updateMember(this.state.modal.id,patch); this.setState({modal:{type:'profile',id:this.state.modal.id}}); this.toast('Saved'); }
+    else { await this._db.addMember(patch); this.closeModal(); this.setState({screen:'members'}); this.toast('Member added'); }
+  }
+  async _deleteMember(){ if(!this._canDelete())return; const id=this.state.modal.id; if(!id)return; await this._db.deleteMember(id); this.closeModal(); this.toast('Member removed'); }
+  async _deleteFirstTimer(){ if(!this._canWrite())return; const id=this.state.modal.id; if(!id)return; await this._db.deleteFirstTimer(id); this.closeModal(); this.setState({screen:'firsttimers'}); this.toast('First timer removed'); }
+  async _savePastorForm(){
+    if(!this._canWrite())return;
+    const name=(this.state.form.name||'').trim();
+    if(!name){ this.setState({formErr:'Name cannot be empty.'}); return; }
+    if(this.state.modal.id) await this._db.updatePastor(this.state.modal.id,{name});
+    else await this._db.addPastor(name);
+    this.closeModal(); this.setState({screen:'pastors'}); this.toast('Saved');
+  }
+  async _deletePastor(){ if(!this._canDelete())return; const id=this.state.modal.id; if(!id)return; await this._db.deletePastor(id); this.closeModal(); this.toast('Pastor removed — members unassigned'); }
+  async _saveFtForm(){
+    if(!this._canWrite())return;
+    const f=this.state.form; const name=(f.name||'').trim();
+    if(!name){ this.setState({formErr:'Name cannot be empty.'}); return; }
+    const patch={ name, invitedBy:(f.invitedBy||'').trim()||null, contacts:(f.contacts||'').trim()||null, firstVisit:f.firstVisit||null };
+    if(this.state.modal.id){ await this._db.updateFirstTimer(this.state.modal.id,patch); this.toast('Saved'); }
+    else { await this._db.addFirstTimer(patch); this.toast('First timer added'); }
+    this.closeModal(); this.setState({screen:'firsttimers'});
+  }
+
+  _vmModal(I){
+    const m=this.state.modal;
+    if(!m) return { modalOpen:false };
+    const statusOpts=this._STATUSES.map(s=>({value:s,label:s}));
+    const pastorOpts=[{value:'',label:'— none —'}].concat(I.snap.pastors.map(p=>({value:p.id,label:p.name})));
+    const householdOpts=[{value:'',label:'— none —'}].concat((I.snap.households||[]).slice().sort((a,b)=>a.name.localeCompare(b.name)).map(h=>({value:h.id,label:h.name})));
+    const out={ modalOpen:true, modal:{ onClose:()=>this.closeModal(), onBackdrop:(e)=>{ if(e.target===e.currentTarget)this.closeModal(); }, statusOpts, pastorOpts, householdOpts,
+      isProfile:false, isMemberForm:false, isFtForm:false, isPastorForm:false, isHouseholdForm:false, canEdit:this.state.role!=='viewer', canAdmin:this.state.role==='admin', hasError:!!this.state.formErr, error:this.state.formErr } };
+    const f=this.state.form;
+
+    if(m.type==='profile'){
+      const mem=I.membersById[m.id]; if(!mem){ return { modalOpen:false }; }
+      const total=I.dates.length, sp=this._servicesPresent(mem.id), rate=this._rate(mem.id), ad=this._avgDur(mem.id);
+      const notes=(I.notesByMember[mem.id]||[]).map(n=>({ date:this._fmtFull(n.date), type:(n.type||'note'), text:n.text, by:n.by||'', onDelete:()=>this._deleteNote(n.id) }));
+      Object.assign(out.modal,{ isProfile:true, avatar:mem.name.trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase(), title:mem.name, subtitle:mem.status,
+        stats:[{k:'Services',v:sp+'/'+total},{k:'Attend. Rate',v:Math.round(rate*100)+'%'},{k:'Avg. Minutes',v:Math.round(ad)},{k:'Last Seen',v:this._fmt(this._lastSeen(mem.id))}],
+        bio:[{l:'Assigned Pastor',r:(I.pastorsById[mem.pastorId]&&I.pastorsById[mem.pastorId].name)||'—'},{l:'Household',r:(I.householdsById[mem.householdId]&&I.householdsById[mem.householdId].name)||'—'},{l:'Phone',r:mem.phone||'—'},{l:'Email',r:mem.email||'—'},{l:'Location',r:mem.location||'—'},{l:'Last Attendance',r:this._fmtFull(this._lastSeen(mem.id))}],
+        status:mem.status, pastorId:mem.pastorId||'', onStatus:(e)=>this._saveStatus(mem.id,e.target.value), onPastor:(e)=>this._savePastor(mem.id,e.target.value), onEdit:()=>this.openEditMember(mem.id),
+        notes, hasNotes:notes.length>0, noteText:this.state.noteText, noteType:this.state.noteType,
+        noteTypeOpts:['call','visit','message','note'].map(t=>({value:t,label:t.charAt(0).toUpperCase()+t.slice(1)})),
+        onNoteText:(e)=>this.setState({noteText:e.target.value}), onNoteType:(e)=>this.setState({noteType:e.target.value}),
+        onAddNote:()=>this._addNote(mem.id), onNoteKey:(e)=>{ if(e.key==='Enter')this._addNote(mem.id); } });
+    } else if(m.type==='memberForm'){
+      Object.assign(out.modal,{ isMemberForm:true, avatar:m.id?'✎':'+', title:m.id?'Edit Member':'Add New Member', subtitle:m.id?'Update details':'Add someone to the roll',
+        fName:f.name||'', fPhone:f.phone||'', fEmail:f.email||'', fLocation:f.location||'', fStatus:f.status||'Growing', fPastorId:f.pastorId||'', fHouseholdId:f.householdId||'',
+        onF_name:(e)=>this._setForm('name',e.target.value), onF_phone:(e)=>this._setForm('phone',e.target.value), onF_email:(e)=>this._setForm('email',e.target.value), onF_location:(e)=>this._setForm('location',e.target.value),
+        onF_status:(e)=>this._setForm('status',e.target.value), onF_pastorId:(e)=>this._setForm('pastorId',e.target.value), onF_householdId:(e)=>this._setForm('householdId',e.target.value),
+        saveLabel:m.id?'Save changes':'Add to Roll', onSave:()=>this._saveMemberForm(), onCancel:()=>{ m.id?this.setState({modal:{type:'profile',id:m.id}}):this.closeModal(); },
+        canDelete:!!m.id && this.state.role==='admin', onDelete:()=>this._deleteMember() });
+    } else if(m.type==='ftForm'){
+      Object.assign(out.modal,{ isFtForm:true, avatar:'✧', title:m.id?'Edit First Timer':'Add First Timer', subtitle:m.id?'Update details':"Log a new visitor's first Sunday",
+        fName:f.name||'', fInvitedBy:f.invitedBy||'', fContacts:f.contacts||'', fFirstVisit:f.firstVisit||'',
+        onF_name:(e)=>this._setForm('name',e.target.value), onF_invitedBy:(e)=>this._setForm('invitedBy',e.target.value), onF_contacts:(e)=>this._setForm('contacts',e.target.value), onF_firstVisit:(e)=>this._setForm('firstVisit',e.target.value),
+        saveLabel:m.id?'Save changes':'Add First Timer', onSave:()=>this._saveFtForm(), onCancel:()=>this.closeModal(),
+        canDelete:!!m.id, onDelete:()=>this._deleteFirstTimer() });
+    } else if(m.type==='pastorForm'){
+      Object.assign(out.modal,{ isMemberForm:false, isPastorForm:true, avatar:m.id?'✎':'✚', title:m.id?'Edit Pastor':'Add Pastor', subtitle:m.id?'Rename this shepherd':'Add a pastor / shepherd',
+        fName:f.name||'', onF_name:(e)=>this._setForm('name',e.target.value),
+        saveLabel:m.id?'Save changes':'Add Pastor', onSave:()=>this._savePastorForm(), onCancel:()=>this.closeModal(),
+        canDelete:!!m.id, onDelete:()=>this._deletePastor() });
+    } else if(m.type==='householdForm'){
+      Object.assign(out.modal,{ isPastorForm:false, isHouseholdForm:true, avatar:m.id?'✎':'⌂', title:m.id?'Edit Household':'Add Household', subtitle:m.id?'Rename this family/household':'Create a family / household',
+        fName:f.name||'', onF_name:(e)=>this._setForm('name',e.target.value),
+        saveLabel:m.id?'Save changes':'Add Household', onSave:()=>this._saveHouseholdForm(), onCancel:()=>this.closeModal(),
+        canDelete:!!m.id, onDelete:()=>this._deleteHousehold() });
+    }
+    return out;
+  }
+}
+</script>
+</body>
+</html>
