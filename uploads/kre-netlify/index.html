@@ -1,0 +1,912 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kadosh Royal Ecclesia — Membership Intelligence</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --pp-900:#26093f; --pp-800:#350f53; --pp-700:#4a1d6e; --pp-600:#5e2a87;
+  --gold:#cda434; --gold-l:#ecc868; --gold-d:#a47d1f; --gold-soft:#f3e3b0;
+  --crimson:#b5302a; --crimson-d:#8e231e;
+  --ink:#2c2233; --ink-soft:#5f5366; --ink-faint:#928697;
+  --bg:#f6f1ea; --bg-2:#efe7d8; --paper:#fffdfa; --line:#e7dcc9;
+  --growing:#5f7355; --active:#2f8079; --worker:#cb9a2f; --covenant:#6b2c3e;
+  --inactive:#9a8d86; --drifting:#c2683f; --unclassified:#b3a99e;
+  --shadow:0 1px 2px rgba(50,20,60,.06),0 10px 34px rgba(50,20,60,.08);
+  --radius:16px;
+  --sb:264px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:
+  radial-gradient(1100px 560px at 90% -8%, #fbf4e6 0%, transparent 58%),
+  radial-gradient(900px 520px at -6% 108%, #f0e6d4 0%, transparent 52%),
+  var(--bg);
+  color:var(--ink);font-family:'Outfit',sans-serif;-webkit-font-smoothing:antialiased;line-height:1.5}
+h1,h2,h3,h4{font-family:'Fraunces',serif;font-weight:600;letter-spacing:-.01em;margin:0}
+.serif{font-family:'Cormorant Garamond',serif}
+
+/* ===== Layout ===== */
+.shell{display:flex;min-height:100vh}
+.sidebar{width:var(--sb);flex:none;position:sticky;top:0;height:100vh;
+  background:linear-gradient(180deg,var(--pp-800),var(--pp-900) 70%);
+  color:#efe6f5;display:flex;flex-direction:column;padding:22px 16px;
+  box-shadow:6px 0 30px rgba(38,9,63,.18);z-index:20}
+.sb-brand{display:flex;flex-direction:column;align-items:center;text-align:center;padding:4px 6px 18px;border-bottom:1px solid rgba(236,200,104,.18)}
+.sb-logo{width:96px;height:96px;border-radius:50%;background:#fff;padding:8px;object-fit:contain;
+  box-shadow:0 8px 26px rgba(0,0,0,.35),0 0 0 2px var(--gold);margin-bottom:12px}
+.sb-name{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:20px;line-height:1.05;color:#fff;letter-spacing:.02em}
+.sb-tag{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-l);margin-top:6px}
+.sb-nav{display:flex;flex-direction:column;gap:3px;margin-top:18px;flex:1;overflow:auto}
+.sb-sec{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:rgba(243,227,176,.55);
+  padding:14px 14px 6px;font-weight:600}
+.navitem{display:flex;align-items:center;gap:12px;font-family:'Outfit';font-size:14px;font-weight:500;
+  color:#d9cce4;background:transparent;border:none;border-radius:11px;padding:11px 14px;cursor:pointer;
+  text-align:left;width:100%;transition:.16s;position:relative}
+.navitem .ico{width:20px;text-align:center;font-size:15px;opacity:.85;flex:none}
+.navitem:hover{background:rgba(255,255,255,.07);color:#fff}
+.navitem.active{background:linear-gradient(100deg,rgba(205,164,52,.22),rgba(205,164,52,.06));color:#fff}
+.navitem.active::before{content:"";position:absolute;left:-16px;top:8px;bottom:8px;width:4px;border-radius:0 4px 4px 0;background:var(--gold)}
+.navitem.active .ico{opacity:1;color:var(--gold-l)}
+.sb-foot{font-size:11px;color:rgba(217,204,228,.5);text-align:center;padding-top:14px;border-top:1px solid rgba(236,200,104,.14)}
+.saved{font-size:11px;color:var(--gold-l);display:flex;align-items:center;gap:6px;justify-content:center;opacity:0;transition:.3s;margin-top:8px}
+.saved.show{opacity:1}
+.saved::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--gold-l)}
+
+.main{flex:1;min-width:0;padding:30px 38px 70px}
+.pagehead{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:8px}
+.pagehead h1{font-size:32px;line-height:1}
+.pagehead .crumb{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-d);font-weight:600;margin-bottom:8px}
+.section-intro{font-size:14px;color:var(--ink-soft);max-width:80ch;margin:6px 0 24px}
+
+/* mobile */
+.mtopbar{display:none}
+@media(max-width:880px){
+  .shell{flex-direction:column}
+  .sidebar{position:static;width:100%;height:auto;flex-direction:column;padding:16px}
+  .sb-brand{flex-direction:row;gap:14px;text-align:left;border-bottom:none;padding-bottom:8px}
+  .sb-logo{width:60px;height:60px;margin:0}
+  .sb-nav{flex-direction:row;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .sb-sec{display:none}.sb-foot{display:none}
+  .navitem{width:auto;padding:9px 13px;border-radius:999px;background:rgba(255,255,255,.06)}
+  .navitem.active::before{display:none}
+  .main{padding:22px 18px 60px}
+}
+
+/* ===== Cards / panels ===== */
+.grid{display:grid;gap:16px}
+.cards{grid-template-columns:repeat(auto-fit,minmax(186px,1fr))}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.stat{position:relative;overflow:hidden}
+.stat::after{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold)}
+.stat.s-green::after{background:var(--growing)} .stat.s-red::after{background:var(--drifting)}
+.stat.s-purple::after{background:var(--pp-600)} .stat.s-teal::after{background:var(--active)}
+.stat .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-faint);font-weight:600}
+.stat .v{font-family:'Fraunces',serif;font-size:36px;font-weight:600;line-height:1;margin-top:10px}
+.stat .d{font-size:12.5px;color:var(--ink-soft);margin-top:7px}
+.stat .ic{position:absolute;top:15px;right:16px;font-size:20px;opacity:.18}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+.panel h3{font-size:20px;margin-bottom:3px}
+.panel .ph{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.muted{color:var(--ink-faint);font-size:13px}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:4px 11px;border-radius:999px;color:#fff;white-space:nowrap}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.85)}
+.b-Growing{background:var(--growing)} .b-Active{background:var(--active)} .b-Worker{background:var(--worker)}
+.b-Covenant{background:var(--covenant)} .b-Inactive{background:var(--inactive)} .b-Drifting{background:var(--drifting)}
+.b-Unclassified{background:var(--unclassified)}
+
+/* Tables */
+.tbl-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--paper);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{position:sticky;top:0;background:var(--bg-2);text-align:left;font-weight:600;color:var(--ink-soft);font-size:11.5px;
+  text-transform:uppercase;letter-spacing:.05em;padding:11px 14px;border-bottom:1.5px solid var(--line);white-space:nowrap;z-index:2}
+td{padding:11px 14px;border-bottom:1px solid #f1e9da;vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr{transition:.12s}
+tbody tr:hover{background:#faf4ea}
+.clickable{cursor:pointer}
+.name-cell{font-weight:600;color:var(--ink)}
+.name-cell .arrow{color:var(--gold-d);opacity:0;transition:.15s;margin-left:6px}
+tr:hover .name-cell .arrow{opacity:1}
+
+/* Controls */
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+input[type=text],select{font-family:'Outfit';font-size:13.5px;color:var(--ink);background:var(--paper);
+  border:1.5px solid var(--line);border-radius:10px;padding:9px 13px;outline:none;transition:.15s}
+input[type=text]:focus,select:focus{border-color:var(--gold)}
+input[type=text]{min-width:210px}
+.chip{font-size:12.5px;font-weight:500;padding:7px 13px;border-radius:999px;border:1.5px solid var(--line);background:var(--paper);cursor:pointer;color:var(--ink-soft);transition:.15s}
+.chip:hover{border-color:var(--gold)}
+.chip.on{background:var(--pp-700);color:#fff;border-color:var(--pp-700)}
+
+/* Register */
+.reg-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--paper);box-shadow:var(--shadow);max-height:72vh}
+.reg{border-collapse:separate;border-spacing:0;font-size:12px}
+.reg th,.reg td{padding:0;border-bottom:1px solid #f1e9da;border-right:1px solid #f5eee0}
+.reg th{background:var(--bg-2);font-size:10px;padding:8px 6px;writing-mode:vertical-rl;transform:rotate(180deg);height:96px;white-space:nowrap}
+.reg th.namehead,.reg td.namecol{writing-mode:initial;transform:none}
+.reg .namecol{position:sticky;left:0;background:var(--paper);font-weight:600;padding:8px 12px;min-width:175px;z-index:1;border-right:1.5px solid var(--line)}
+.reg th.namehead{position:sticky;left:0;z-index:3;writing-mode:initial;transform:none;text-align:left;padding:8px 12px;min-width:175px;height:auto}
+.reg tbody tr:hover .namecol{background:#faf4ea}
+.cellbtn{width:34px;height:34px;display:grid;place-items:center;cursor:pointer;font-size:13px;user-select:none}
+.cellbtn.p{background:rgba(95,115,85,.18);color:var(--growing);font-weight:700}
+.cellbtn.a{background:rgba(194,104,63,.12);color:var(--drifting)}
+.cellbtn.n{color:#dcd2c2}
+.cellbtn:hover{outline:2px solid var(--gold);outline-offset:-2px}
+.reg th.future{opacity:.5}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(38,9,63,.5);backdrop-filter:blur(3px);display:none;align-items:flex-start;justify-content:center;padding:40px 18px;z-index:60;overflow:auto}
+.modal-bg.show{display:flex}
+.modal{background:var(--paper);border-radius:20px;max-width:700px;width:100%;box-shadow:0 30px 90px rgba(38,9,63,.4);animation:pop .25s cubic-bezier(.2,.9,.3,1)}
+@keyframes pop{from{transform:translateY(14px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+.modal-head{padding:26px 28px 20px;border-bottom:1px solid var(--line);position:relative;background:linear-gradient(155deg,#fffdfa,#f3ecf6)}
+.modal-head .avatar{width:56px;height:56px;border-radius:15px;background:linear-gradient(150deg,var(--pp-600),var(--pp-800));color:var(--gold-l);display:grid;place-items:center;font-family:'Fraunces';font-size:24px;font-weight:600;margin-bottom:14px;box-shadow:0 8px 20px rgba(74,29,110,.3)}
+.modal-head h2{font-size:27px}
+.modal-close{position:absolute;top:20px;right:22px;font-size:20px;cursor:pointer;color:var(--ink-faint);width:34px;height:34px;display:grid;place-items:center;border-radius:9px}
+.modal-close:hover{background:var(--bg-2);color:var(--ink)}
+.modal-body{padding:24px 28px 30px}
+.minigrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:22px}
+.mini{background:var(--bg);border-radius:12px;padding:14px 16px;border:1px solid var(--line)}
+.mini .k{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);font-weight:600}
+.mini .v{font-family:'Fraunces';font-size:24px;font-weight:600;margin-top:5px}
+.bioline{display:flex;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid #f1e9da;font-size:14px}
+.bioline .l{color:var(--ink-faint)}.bioline .r{font-weight:600;text-align:right}
+.status-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:18px 0 6px}
+.statusctl{font-family:'Outfit';font-size:13.5px;font-weight:600;padding:9px 14px;border-radius:10px;border:1.5px solid var(--line);background:var(--paper);cursor:pointer}
+.btn{font-family:'Outfit';font-weight:600;font-size:13.5px;padding:9px 18px;border-radius:10px;border:none;background:var(--pp-700);color:#fff;cursor:pointer;transition:.15s}
+.btn:hover{background:var(--pp-800)}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn.ghost:hover{background:var(--bg-2)}
+.spark{display:flex;gap:3px;align-items:flex-end;height:42px;margin-top:6px}
+.spark i{flex:1;background:var(--growing);border-radius:2px 2px 0 0;min-height:3px;opacity:.85}
+.spark i.absent{background:#e6d8c8}
+.chartbox{position:relative;height:320px}.chartbox.sm{height:262px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:760px){.two,.three{grid-template-columns:1fr}}
+.pill-list{display:flex;flex-direction:column;gap:9px}
+.rankrow{display:flex;align-items:center;gap:12px}
+.rankrow .nm{flex:none;width:160px;font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rankrow .bar{flex:1;height:22px;background:var(--bg-2);border-radius:6px;overflow:hidden}
+.rankrow .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-l),var(--gold-d));border-radius:6px}
+.rankrow .vv{flex:none;width:38px;text-align:right;font-weight:700;font-size:13px}
+.tag{display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;background:var(--bg-2);color:var(--ink-soft)}
+.tag.ret{background:rgba(95,115,85,.18);color:var(--growing)}
+.tag.no{background:rgba(194,104,63,.16);color:var(--drifting)}
+.tag.warn{background:rgba(203,154,47,.18);color:var(--gold-d)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft);margin-top:10px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend .sw{width:12px;height:12px;border-radius:4px;display:inline-block}
+.empty{text-align:center;padding:40px;color:var(--ink-faint)}
+.namelist{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.namechip{font-size:12.5px;font-weight:500;padding:6px 11px;border-radius:8px;background:var(--bg);border:1px solid var(--line);cursor:pointer;transition:.14s}
+.namechip:hover{border-color:var(--gold);background:#fff}
+.namechip.show{border-left:3px solid var(--growing)}
+.namechip.noshow{border-left:3px solid var(--drifting)}
+.pastorcard{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.pastorcard .pc-head{padding:18px 20px;background:linear-gradient(120deg,var(--pp-700),var(--pp-800));color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.pastorcard .pc-head h3{color:#fff}.pastorcard .pc-head .meta{font-size:12px;color:var(--gold-l)}
+.pc-body{padding:18px 20px}
+.split-head{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 4px}
+.dot{width:9px;height:9px;border-radius:50%}
+.dot.g{background:var(--growing)}.dot.r{background:var(--drifting)}
+.amlab{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint);font-weight:600;margin-bottom:5px}
+.modal-body input[type=text]{width:100%}
+.hc-input{width:90px;font-family:'Outfit';font-size:14px;font-weight:600;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:8px;padding:6px 10px;outline:none}
+.hc-input:focus{border-color:var(--gold)}
+.dur-cell{width:46px;height:34px;border:none;background:transparent;text-align:center;font-family:'Outfit';font-size:12px;color:var(--ink);outline:none;-moz-appearance:textfield}
+.dur-cell::-webkit-outer-spin-button,.dur-cell::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.dur-cell:focus{outline:2px solid var(--gold);outline-offset:-2px}
+</style>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sb-brand">
+      <img class="sb-logo" id="sbLogo" alt="Kadosh Royal Ecclesia">
+      <div class="sb-name">Kadosh Royal<br>Ecclesia</div>
+      <div class="sb-tag">Membership Intelligence</div>
+    </div>
+    <nav class="sb-nav" id="nav"></nav>
+    <div class="sb-foot">
+      Auto-saving · 2026
+      <div class="saved" id="savedflag">Changes saved</div>
+    </div>
+  </aside>
+  <main class="main">
+    <div id="view"></div>
+  </main>
+</div>
+
+<div class="modal-bg" id="modalbg" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal"></div>
+</div>
+
+<script id="logodata" type="text/plain">data:image/jpeg;base64,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</script>
+<script>
+document.getElementById('sbLogo').src=document.getElementById('logodata').textContent.trim();
+const GAS_URL="https://script.google.com/macros/s/AKfycbw2OLc-hvcQS_j41LLTQgUAKaISU4e5X0qk6j791Gvn-YCxCqym7b_4HqtHNAJ6OTizwA/exec";
+let DATA=null;
+function postGAS(action,payload){if(!GAS_URL||GAS_URL.indexOf("PASTE")>=0)return;try{fetch(GAS_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(Object.assign({action:action},payload))}).catch(function(){});}catch(e){}}
+function postNewMember(m){postGAS("member",{name:m.name,phone:m.phone,location:m.location,status:m.status,pastor:m.pastor});}
+function postNewFirstTimer(f){postGAS("firsttimer",{name:f.name,invited_by:f.invited_by,contacts:f.contacts,date:f.weeks[0]});}
+
+/* ============================ STATE ============================ */
+const SIX_STATUSES=["Growing Member","Active Member","Worker","Covenant Member","Inactive Member","Drifting Member"];
+const STATUS_KEY={"Growing Member":"Growing","Active Member":"Active","Worker":"Worker","Covenant Member":"Covenant","Inactive Member":"Inactive","Drifting Member":"Drifting","Unclassified":"Unclassified"};
+const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+let overrides={status:{},marks:{}};
+let charts={};
+
+async function loadOverrides(){ try{const r=await window.storage.get('kre_overrides'); if(r&&r.value) overrides=JSON.parse(r.value);}catch(e){} }
+let saveTimer=null;
+async function persist(){
+  try{await window.storage.set('kre_overrides',JSON.stringify(overrides));}catch(e){}
+  const f=document.getElementById('savedflag');f.classList.add('show');
+  clearTimeout(saveTimer);saveTimer=setTimeout(()=>f.classList.remove('show'),1600);
+}
+
+/* ============================ HELPERS ============================ */
+const fmtDate=iso=>{const d=new Date(iso+'T00:00');return d.getDate()+' '+MONTHS[d.getMonth()];};
+const fmtFull=iso=>{const d=new Date(iso+'T00:00');return d.getDate()+' '+MONTHS[d.getMonth()]+' '+d.getFullYear();};
+const monthOf=iso=>MONTHS[new Date(iso+'T00:00').getMonth()];
+const initials=n=>n.trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+const nkey=n=>(n||'').toLowerCase().replace(/[^a-z]/g,'');
+const esc=s=>s.replace(/'/g,"\\'");
+const pct=(a,b)=>b?Math.round(a/b*100)+'%':'0%';
+
+function memStatus(m){return overrides.status[m.name]||m.status||'Unclassified';}
+function isWorker(m){return memStatus(m)==='Worker';}
+function memMark(m,iso){const k=m.name+'|'+iso;if(k in overrides.marks)return overrides.marks[k];if(iso in (m.attendance||{}))return m.attendance[iso];return null;}
+function servicesPresent(m){let c=0;DATA.data_dates.forEach(iso=>{if(memMark(m,iso)===1)c++;});return c;}
+function attendanceRate(m){let p=0,t=0;DATA.data_dates.forEach(iso=>{const v=memMark(m,iso);if(v!==null){t++;if(v===1)p++;}});return t?p/t:0;}
+function memDur(m,iso){const k=m.name+'|'+iso;if(overrides.duration&&(k in overrides.duration))return overrides.duration[k];return (m.duration&&(iso in m.duration))?m.duration[iso]:null;}
+function durMap(m){const d=Object.assign({},m.duration||{});if(overrides.duration){const pre=m.name+'|';for(const k in overrides.duration){if(k.indexOf(pre)===0){const iso=k.slice(pre.length);const v=overrides.duration[k];if(v==null)delete d[iso];else d[iso]=v;}}}return d;}
+function avgDuration(m){const v=Object.values(durMap(m)).filter(x=>x>0);return v.length?v.reduce((a,b)=>a+b,0)/v.length:0;}
+function lastSeen(m){let last=null;DATA.data_dates.forEach(iso=>{if(memMark(m,iso)===1)last=iso;});return last;}
+function totalServices(){return DATA.data_dates.length;}
+function weeksSince(m){const ls=lastSeen(m);if(!ls)return 99;return DATA.data_dates.filter(d=>d>ls).length;}
+function avgAllDuration(){let s=0,c=0;DATA.members.forEach(m=>{const a=avgDuration(m);if(a>0){s+=a;c++;}});return c?s/c:0;}
+function ENGAGED(s){return ['Growing Member','Active Member','Worker','Covenant Member'].includes(s);}
+function effGeneral(){const g=Object.assign({},DATA.general||{});const o=overrides.general||{};for(const k in o)g[k]=o[k];return g;}
+function memGeneral(iso){const o=overrides.general||{};if(iso in o)return o[iso];return (iso in (DATA.general||{}))?DATA.general[iso]:null;}
+function serviceList(iso){const o=overrides.service||{};if(iso in o)return o[iso];return (DATA.service&&DATA.service[iso])?DATA.service[iso].slice():[];}
+
+/* ============================ NAV ============================ */
+const NAV=[
+  ['__grp','Insight'],
+  ['overview','Dashboard','◆'],
+  ['general','General Attendance','📈'],
+  ['__grp','People'],
+  ['members','Member Status','👤'],
+  ['workers','Workers','⚜'],
+  ['register','Attendance Register','🗓'],
+  ['duration','Service Duration','⏱'],
+  ['__grp','Growth & Care'],
+  ['firsttimers','First Timers','✦'],
+  ['pastors','Pastor Engagement','✚'],
+  ['followup','Follow-Up','🔔'],
+];
+let active='overview';
+function renderNav(){
+  document.getElementById('nav').innerHTML=NAV.map(n=>{
+    if(n[0]==='__grp') return `<div class="sb-sec">${n[1]}</div>`;
+    return `<button class="navitem ${n[0]===active?'active':''}" onclick="go('${n[0]}')"><span class="ico">${n[2]}</span>${n[1]}</button>`;
+  }).join('');
+}
+const TITLES={overview:['Insight','Dashboard'],general:['Insight','General Attendance'],members:['People','Member Status'],
+  workers:['People','Workers'],register:['People','Attendance Register'],duration:['People','Service Duration'],firsttimers:['Growth & Care','First Timers'],
+  pastors:['Growth & Care','Pastor Engagement'],followup:['Growth & Care','Follow-Up & Last Seen']};
+function go(t){active=t;renderNav();Object.values(charts).forEach(c=>c&&c.destroy());charts={};renderView();window.scrollTo(0,0);}
+function head(){const t=TITLES[active];return `<div class="pagehead"><div><div class="crumb">${t[0]}</div><h1>${t[1]}</h1></div></div>`;}
+function renderView(){
+  const v=document.getElementById('view');
+  if(active==='overview'){v.innerHTML=head()+viewOverview();drawOverview();}
+  else if(active==='general'){v.innerHTML=head()+viewGeneral();drawGeneral();}
+  else if(active==='members'){v.innerHTML=head()+viewMembers();renderMemberTable();}
+  else if(active==='workers'){v.innerHTML=head()+viewWorkers();drawWorkers();}
+  else if(active==='register'){v.innerHTML=head()+viewRegister();renderRegister();}
+  else if(active==='duration'){v.innerHTML=head()+viewDuration();drawDuration();renderDurationGrid();}
+  else if(active==='firsttimers'){v.innerHTML=head()+viewFirstTimers();drawFirstTimers();}
+  else if(active==='pastors'){v.innerHTML=head()+viewPastors();drawPastors();}
+  else if(active==='followup'){v.innerHTML=head()+viewFollowup();}
+}
+</script>
+<script>
+/* ============================ DASHBOARD ============================ */
+function viewOverview(){
+  const mem=DATA.members, total=mem.length;
+  const sc={}; mem.forEach(m=>{const s=memStatus(m);sc[s]=(sc[s]||0)+1;});
+  const engaged=mem.filter(m=>ENGAGED(memStatus(m))).length;
+  const gv=Object.values(effGeneral());
+  const avgGen=gv.length?Math.round(gv.reduce((a,b)=>a+b,0)/gv.length):0;
+  const ft=DATA.firsttimers, ftRet=ft.filter(didReturn).length;
+  const workers=mem.filter(isWorker);
+  const wRate=workers.length?Math.round(workers.reduce((a,m)=>a+attendanceRate(m),0)/workers.length*100):0;
+  const atRisk=mem.filter(m=>weeksSince(m)>=4).length;
+  // congregation attendance rate
+  let p=0,t=0; mem.forEach(m=>DATA.data_dates.forEach(iso=>{const v=memMark(m,iso);if(v!==null){t++;if(v===1)p++;}}));
+  const congRate=t?Math.round(p/t*100):0;
+  // faithful leaders
+  const faithful=mem.map(m=>({m,r:attendanceRate(m),sp:servicesPresent(m)})).filter(x=>x.sp>0).sort((a,b)=>b.r-a.r||b.sp-a.sp).slice(0,6);
+  const maxSp=Math.max(1,...faithful.map(x=>x.sp));
+  const faithBars=faithful.map(x=>`<div class="rankrow"><div class="nm clickable" onclick="openMember('${esc(x.m.name)}')">${x.m.name}</div><div class="bar"><i style="width:${x.sp/maxSp*100}%"></i></div><div class="vv">${Math.round(x.r*100)}%</div></div>`).join('');
+  // inviter quick
+  const inv={}; ft.forEach(f=>{if(f.invited_by)inv[f.invited_by]=(inv[f.invited_by]||0)+1;});
+  const topInv=Object.entries(inv).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const maxInv=Math.max(1,...topInv.map(x=>x[1]));
+  const invBars=topInv.map(([n,c])=>`<div class="rankrow"><div class="nm">${n}</div><div class="bar"><i style="width:${c/maxInv*100}%"></i></div><div class="vv">${c}</div></div>`).join('');
+
+  const cards=[
+    ['Total Members',total,'on the roll','👥','s-purple'],
+    ['Avg. Sunday Attendance',avgGen,`${gv.length} services`,'📊','s-teal'],
+    ['Congregation Attend. Rate',congRate+'%','members present when marked','✓','s-green'],
+    ['Engaged Members',engaged,`${pct(engaged,total)} of roll`,'🔥','s-green'],
+    ['First-Timer Retention',pct(ftRet,ft.length),`${ftRet} of ${ft.length} returned`,'✦','s-teal'],
+    ['Worker Reliability',wRate+'%','avg worker attendance','⚜','s-purple'],
+    ['Needs Follow-Up',atRisk,'not seen 4+ weeks','🔔','s-red'],
+    ['Avg. Time in Service',Math.round(avgAllDuration())+'m','depth of engagement','⏱','s-teal'],
+  ].map(c=>`<div class="card stat ${c[4]}"><span class="ic">${c[3]}</span><div class="k">${c[0]}</div><div class="v">${c[1]}</div><div class="d">${c[2]}</div></div>`).join('');
+
+  const statusBars=SIX_STATUSES.concat(['Unclassified']).map(s=>{const n=sc[s]||0;return n?`<div class="rankrow"><div class="nm"><span class="badge b-${STATUS_KEY[s]}">${s}</span></div><div class="bar"><i style="width:${n/total*100}%"></i></div><div class="vv">${n}</div></div>`:'';}).join('');
+
+  return `
+  <p class="section-intro">A living overview of Kadosh Royal Ecclesia — congregation momentum, membership health, discipleship engagement and the people who need care this week. Every figure updates as you mark attendance and reclassify members.</p>
+  <div class="grid cards" style="margin-bottom:18px">${cards}</div>
+  <div class="two" style="margin-bottom:16px">
+    <div class="panel"><div class="ph"><div><h3>Attendance Momentum</h3><div class="muted">general Sunday headcount with running average</div></div></div><div class="chartbox"><canvas id="ovTrend"></canvas></div></div>
+    <div class="panel"><div class="ph"><div><h3>Membership Composition</h3><div class="muted">who makes up the body</div></div></div><div class="chartbox"><canvas id="ovDonut"></canvas></div></div>
+  </div>
+  <div class="three">
+    <div class="panel"><div class="ph"><div><h3>By Status</h3></div></div><div class="pill-list">${statusBars}</div></div>
+    <div class="panel"><div class="ph"><div><h3>Most Faithful</h3><div class="muted">top attendance</div></div></div><div class="pill-list">${faithBars}</div></div>
+    <div class="panel"><div class="ph"><div><h3>Top Inviters</h3><div class="muted">bringing first timers</div></div></div><div class="pill-list">${invBars||'<div class="muted">No inviter data yet</div>'}</div></div>
+  </div>`;
+}
+function drawOverview(){
+  const e=Object.keys(effGeneral()).sort();
+  const labels=e.map(fmtDate), vals=e.map(k=>effGeneral()[k]);
+  const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+  charts.ovt=new Chart(document.getElementById('ovTrend'),{type:'line',
+    data:{labels,datasets:[
+      {label:'Attendance',data:vals,borderColor:'#a47d1f',backgroundColor:goldGrad(),fill:true,tension:.35,borderWidth:2.5,pointRadius:3,pointBackgroundColor:'#a47d1f',pointBorderColor:'#fff',pointBorderWidth:2},
+      {label:'Average',data:vals.map(()=>avg),borderColor:'#6b2c3e',borderDash:[6,5],borderWidth:1.5,pointRadius:0}
+    ]},options:baseOpts(true)});
+  const mem=DATA.members,sc={};mem.forEach(m=>{const s=memStatus(m);sc[s]=(sc[s]||0)+1;});
+  const labs=SIX_STATUSES.concat(['Unclassified']).filter(s=>sc[s]);
+  const cols={'Growing Member':'#5f7355','Active Member':'#2f8079','Worker':'#cb9a2f','Covenant Member':'#6b2c3e','Inactive Member':'#9a8d86','Drifting Member':'#c2683f','Unclassified':'#b3a99e'};
+  charts.ovd=new Chart(document.getElementById('ovDonut'),{type:'doughnut',
+    data:{labels:labs,datasets:[{data:labs.map(s=>sc[s]),backgroundColor:labs.map(s=>cols[s]),borderColor:'#fffdfa',borderWidth:3}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{position:'right',labels:{font:{family:'Outfit',size:12},color:'#5f5366',padding:10,boxWidth:10,usePointStyle:true}}}}});
+}
+
+/* ============================ GENERAL ATTENDANCE ============================ */
+let genYear=2026, svcDate=null;
+function viewGeneral(){
+  const gmap=effGeneral();
+  const entries=Object.keys(gmap).sort();
+  const vals=entries.map(k=>gmap[k]);
+  const avg=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0;
+  const monthly={};entries.forEach(k=>{const mo=monthOf(k);(monthly[mo]=monthly[mo]||[]).push(gmap[k]);});
+  const monthRows=Object.keys(monthly).map(mo=>{const a=monthly[mo];const av=Math.round(a.reduce((x,y)=>x+y,0)/a.length);return `<tr><td class="name-cell">${mo}</td><td>${a.length}</td><td>${av}</td><td>${Math.max(...a)}</td><td>${Math.min(...a)}</td></tr>`;}).join('');
+  const trend=vals.length>1?vals[vals.length-1]-vals[0]:0;
+  const years=[...new Set(DATA.sundays.map(s=>+s.slice(0,4)))].sort();
+  const ychips=years.map(y=>`<button class="chip ${y===genYear?'on':''}" onclick="setGenYear(${y})">${y}</button>`).join('');
+  const today=new Date();
+  const recRows=DATA.sundays.filter(s=>+s.slice(0,4)===genYear).map(iso=>{
+    const v=memGeneral(iso); const named=serviceList(iso).length; const fut=new Date(iso+'T00:00')>today;
+    return `<tr><td class="name-cell">${fmtFull(iso)}${fut?' <span class="muted">(upcoming)</span>':''}</td>
+      <td><input type="number" min="0" class="hc-input" value="${v==null?'':v}" placeholder="—" onchange="setGeneral('${iso}',this.value)"></td>
+      <td>${named?`<span class="tag ret">${named} recorded</span>`:'<span class="muted">none yet</span>'}</td>
+      <td><button class="chip" onclick="openService('${iso}')">Manage attendees →</button></td></tr>`;
+  }).join('');
+  return `
+  <p class="section-intro">Headcount of everyone present at each Sunday meeting — the truest pulse of the house. Record totals for any Sunday of the year below, and use the attendee list to capture exactly who was in service (members, first timers, and everyone else).</p>
+  <div class="grid cards" style="margin-bottom:18px">
+    <div class="card stat s-teal"><div class="k">Services Recorded</div><div class="v">${vals.length}</div><div class="d">Sundays with a headcount</div></div>
+    <div class="card stat s-green"><div class="k">Average Attendance</div><div class="v">${avg}</div><div class="d">people per service</div></div>
+    <div class="card stat s-purple"><div class="k">Highest</div><div class="v">${vals.length?Math.max(...vals):0}</div><div class="d">peak Sunday</div></div>
+    <div class="card stat s-red"><div class="k">Lowest</div><div class="v">${vals.length?Math.min(...vals):0}</div><div class="d">quietest Sunday</div></div>
+    <div class="card stat ${trend>=0?'s-green':'s-red'}"><div class="k">Net Change</div><div class="v">${trend>=0?'+':''}${trend}</div><div class="d">first vs latest service</div></div>
+  </div>
+  <div class="panel" style="margin-bottom:16px"><div class="ph"><div><h3>Attendance Trend</h3><div class="muted">every recorded Sunday with the running average</div></div></div><div class="chartbox"><canvas id="genTrend"></canvas></div></div>
+  <div class="two" style="margin-bottom:16px">
+    <div class="panel"><div class="ph"><div><h3>Monthly Average</h3></div></div><div class="chartbox sm"><canvas id="genMonth"></canvas></div></div>
+    <div class="panel"><div class="ph"><div><h3>Monthly Breakdown</h3></div></div><div class="tbl-wrap" style="box-shadow:none"><table><thead><tr><th>Month</th><th>Services</th><th>Average</th><th>High</th><th>Low</th></tr></thead><tbody>${monthRows}</tbody></table></div></div>
+  </div>
+  <div class="panel"><div class="ph"><div><h3>Record Attendance &amp; Service Roll</h3><div class="muted">enter the total for any Sunday, and tap “manage attendees” to capture who was present</div></div><span style="display:flex;gap:6px">${ychips}</span></div>
+    <div class="tbl-wrap" style="box-shadow:none;max-height:60vh"><table><thead><tr><th>Sunday</th><th>Total present</th><th>Named attendees</th><th></th></tr></thead><tbody>${recRows}</tbody></table></div>
+  </div>`;
+}
+function setGenYear(y){genYear=y;renderView();}
+function setGeneral(iso,v){overrides.general=overrides.general||{};const n=v===''?null:Math.max(0,Math.round(+v||0));if(n==null)delete overrides.general[iso];else overrides.general[iso]=n;persist();if(typeof postGAS==='function')postGAS('general',{date:iso,value:n});Object.values(charts).forEach(c=>c&&c.destroy());charts={};renderView();}
+function drawGeneral(){
+  const gmap=effGeneral();const e=Object.keys(gmap).sort();const labels=e.map(fmtDate);const vals=e.map(k=>gmap[k]);
+  if(!vals.length)return;const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+  charts.gt=new Chart(document.getElementById('genTrend'),{type:'line',data:{labels,datasets:[
+    {label:'Attendance',data:vals,borderColor:'#a47d1f',backgroundColor:goldGrad(),fill:true,tension:.35,borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#a47d1f',pointBorderColor:'#fff',pointBorderWidth:2},
+    {label:'Average',data:vals.map(()=>avg),borderColor:'#6b2c3e',borderDash:[6,5],borderWidth:1.5,pointRadius:0}]},options:baseOpts(true)});
+  const monthly={};e.forEach(k=>{const mo=monthOf(k);(monthly[mo]=monthly[mo]||[]).push(gmap[k]);});
+  const ml=Object.keys(monthly),mv=ml.map(mo=>Math.round(monthly[mo].reduce((a,b)=>a+b,0)/monthly[mo].length));
+  charts.gm=new Chart(document.getElementById('genMonth'),{type:'bar',data:{labels:ml,datasets:[{data:mv,backgroundColor:'#5e2a87',borderRadius:8,maxBarThickness:48}]},options:baseOpts(false)});
+}
+function openService(iso){
+  svcDate=iso;const list=serviceList(iso);
+  const chips=list.length?list.map((n,i)=>`<span class="namechip" style="border-left:3px solid var(--active)">${String(n).replace(/</g,'&lt;')} <b style="color:var(--drifting);cursor:pointer;margin-left:4px" onclick="removeAttendee(${i})">✕</b></span>`).join(''):'<div class="muted">No one recorded yet for this service.</div>';
+  document.getElementById('modal').innerHTML=`
+    <div class="modal-head"><div class="modal-close" onclick="closeModal()">✕</div><div class="avatar">${list.length}</div><h2>Service Attendance</h2>
+      <div class="muted" style="margin-top:6px">${fmtFull(iso)} — everyone who was in service</div></div>
+    <div class="modal-body">
+      <div style="display:flex;gap:8px;margin-bottom:16px"><input type="text" id="svcName" placeholder="Add a name…" style="flex:1" onkeydown="if(event.key==='Enter')addAttendee()"><button class="btn" onclick="addAttendee()">Add</button></div>
+      <div class="namelist" id="svcList">${chips}</div>
+      <div class="status-row" style="margin-top:20px"><button class="btn ghost" onclick="useCountAsHeadcount('${iso}')">Set total present = ${list.length}</button><button class="btn ghost" onclick="closeModal()">Done</button></div>
+      <div class="muted" style="margin-top:12px">This list captures <i>everyone</i> present — not just members or first timers.</div>
+    </div>`;
+  document.getElementById('modalbg').classList.add('show');
+  setTimeout(()=>{const n=document.getElementById('svcName');if(n)n.focus();},50);
+}
+function saveService(){const iso=svcDate;persist();if(typeof postGAS==='function')postGAS('service',{date:iso,names:serviceList(iso)});}
+function addAttendee(){const e=document.getElementById('svcName');const nm=(e.value||'').trim();if(!nm)return;const list=serviceList(svcDate);list.push(nm);overrides.service=overrides.service||{};overrides.service[svcDate]=list;saveService();openService(svcDate);}
+function removeAttendee(i){const list=serviceList(svcDate);list.splice(i,1);overrides.service=overrides.service||{};overrides.service[svcDate]=list;saveService();openService(svcDate);}
+function useCountAsHeadcount(iso){setGeneral(iso,serviceList(iso).length);closeModal();}
+</script>
+<script>
+/* ============================ MEMBERS ============================ */
+let memFilter='',memSearch='';
+function viewMembers(){
+  const chips=['All'].concat(SIX_STATUSES).map(f=>`<button class="chip ${(memFilter===f||(!memFilter&&f==='All'))?'on':''}" onclick="setMemFilter('${f}')">${f}</button>`).join('');
+  return `
+  <p class="section-intro">Every member with their live classification. Use the status control inside any profile to re-classify someone as their season changes — it saves automatically. Click a name to open the full profile: services attended, time in service, bio, assigned pastor and last attendance.</p>
+  <div class="toolbar"><input type="text" id="memSearchBox" placeholder="Search a member…" value="${memSearch}" oninput="memSearch=this.value;renderMemberTable()">${chips}<button class="btn" style="margin-left:auto" onclick="openAddMember()">+ Add Member</button></div>
+  <div id="memTableHost"></div>`;
+}
+function setMemFilter(f){memFilter=f==='All'?'':f;renderView();}
+function renderMemberTable(){const h=document.getElementById('memTableHost');if(h)h.innerHTML=memberTableHTML();}
+function memberTableHTML(){
+  let rows=DATA.members.filter(m=>{const st=memStatus(m);if(memFilter&&st!==memFilter)return false;if(memSearch&&!m.name.toLowerCase().includes(memSearch.toLowerCase()))return false;return true;});
+  rows.sort((a,b)=>a.name.localeCompare(b.name));
+  if(!rows.length)return `<div class="panel"><div class="empty">No members match this filter.</div></div>`;
+  const body=rows.map(m=>{const st=memStatus(m),sp=servicesPresent(m),ls=lastSeen(m);
+    return `<tr class="clickable" onclick="openMember('${esc(m.name)}')"><td class="name-cell">${m.name}<span class="arrow">→</span></td><td><span class="badge b-${STATUS_KEY[st]}">${st}</span></td><td>${m.pastor||'<span class="muted">—</span>'}</td><td>${m.location||'<span class="muted">—</span>'}</td><td>${sp}/${totalServices()}</td><td>${Math.round(attendanceRate(m)*100)}%</td><td>${ls?fmtFull(ls):'<span class="muted">not yet</span>'}</td></tr>`;}).join('');
+  return `<div class="tbl-wrap"><table><thead><tr><th>Member</th><th>Status</th><th>Pastor</th><th>Location</th><th>Services</th><th>Rate</th><th>Last Seen</th></tr></thead><tbody>${body}</tbody></table></div><div class="muted" style="margin-top:10px">${rows.length} member${rows.length>1?'s':''} shown</div>`;
+}
+
+/* ============================ WORKERS (standalone) ============================ */
+let wkSearch='';
+function workersList(){return DATA.members.filter(isWorker);}
+function viewWorkers(){
+  const w=workersList();
+  const avgRate=w.length?Math.round(w.reduce((a,m)=>a+attendanceRate(m),0)/w.length*100):0;
+  const showing=w.filter(m=>weeksSince(m)<3).length;
+  const atRisk=w.filter(m=>weeksSince(m)>=3);
+  const durs=w.map(avgDuration).filter(d=>d>0);
+  const avgDur=durs.length?Math.round(durs.reduce((a,b)=>a+b,0)/durs.length):0;
+  const perfect=w.filter(m=>attendanceRate(m)>=0.95 && servicesPresent(m)>0).length;
+  const rows=w.slice().sort((a,b)=>attendanceRate(b)-attendanceRate(a)).map(m=>{
+    const r=attendanceRate(m),ls=lastSeen(m),ws=weeksSince(m);
+    let flag=ws>=3?`<span class="tag no">${ws} wks absent</span>`:(r>=0.95?'<span class="tag ret">Faithful</span>':'<span class="tag">Active</span>');
+    return `<tr class="clickable" onclick="openMember('${esc(m.name)}')"><td class="name-cell">${m.name}<span class="arrow">→</span></td><td>${m.pastor||'—'}</td><td>${servicesPresent(m)}/${totalServices()}</td><td>${Math.round(r*100)}%</td><td>${Math.round(avgDuration(m))}m</td><td>${ls?fmtFull(ls):'—'}</td><td>${flag}</td></tr>`;}).join('');
+  const riskList=atRisk.length?`<div class="namelist">${atRisk.map(m=>`<span class="namechip noshow" onclick="openMember('${esc(m.name)}')">${m.name} · ${weeksSince(m)}w</span>`).join('')}</div>`:'<div class="muted" style="margin-top:8px">Every worker has been seen recently. 🎉</div>';
+  return `
+  <p class="section-intro">Workers are the backbone of the house and are held to a higher standard of faithfulness. This section treats them as a distinct body — tracking how reliably they show up, how long they serve, and flagging any worker who has gone quiet so leadership can reach them quickly.</p>
+  <div class="toolbar"><button class="btn" onclick="openAddMember('Worker')">+ Add Worker</button></div>
+  <div class="grid cards" style="margin-bottom:18px">
+    <div class="card stat s-purple"><span class="ic">⚜</span><div class="k">Total Workers</div><div class="v">${w.length}</div><div class="d">set apart to serve</div></div>
+    <div class="card stat s-green"><div class="k">Avg. Reliability</div><div class="v">${avgRate}%</div><div class="d">attendance across workers</div></div>
+    <div class="card stat s-teal"><div class="k">Currently Active</div><div class="v">${showing}<span style="font-size:15px;color:var(--ink-faint)">/${w.length}</span></div><div class="d">seen in last 2 weeks</div></div>
+    <div class="card stat s-green"><div class="k">Highly Faithful</div><div class="v">${perfect}</div><div class="d">95%+ attendance</div></div>
+    <div class="card stat ${atRisk.length?'s-red':'s-green'}"><span class="ic">🔔</span><div class="k">Workers Going Quiet</div><div class="v">${atRisk.length}</div><div class="d">absent 3+ weeks</div></div>
+    <div class="card stat s-teal"><div class="k">Avg. Time Serving</div><div class="v">${avgDur}m</div><div class="d">per service attended</div></div>
+  </div>
+  <div class="two" style="margin-bottom:16px">
+    <div class="panel"><div class="ph"><div><h3>Worker Faithfulness</h3><div class="muted">attendance rate per worker</div></div></div><div class="chartbox"><canvas id="wkChart"></canvas></div></div>
+    <div class="panel"><div class="ph"><div><h3>Workers Needing a Check-In</h3><div class="muted">absent 3+ weeks — reach out</div></div></div>${riskList}</div>
+  </div>
+  <div class="panel"><div class="ph"><div><h3>Worker Roster</h3><div class="muted">ranked by reliability · click for full profile</div></div></div><div class="tbl-wrap" style="box-shadow:none"><table><thead><tr><th>Worker</th><th>Pastor</th><th>Services</th><th>Rate</th><th>Avg Time</th><th>Last Seen</th><th>Standing</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+function drawWorkers(){
+  const w=workersList().slice().sort((a,b)=>attendanceRate(b)-attendanceRate(a));
+  const labels=w.map(m=>m.name),vals=w.map(m=>Math.round(attendanceRate(m)*100));
+  charts.wk=new Chart(document.getElementById('wkChart'),{type:'bar',
+    data:{labels,datasets:[{data:vals,backgroundColor:vals.map(v=>v>=80?'#5f7355':v>=50?'#cb9a2f':'#c2683f'),borderRadius:5}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.x+'% attendance'}}},
+      scales:{x:{beginAtZero:true,max:100,grid:{color:'#efe7d8'},ticks:{font:{family:'Outfit',size:10},color:'#928697',callback:v=>v+'%'}},y:{grid:{display:false},ticks:{font:{family:'Outfit',size:11},color:'#5f5366'}}}}});
+}
+
+/* ============================ REGISTER ============================ */
+let regSearch='';let regYear=2026;
+function viewRegister(){
+  const years=[...new Set(DATA.sundays.map(s=>+s.slice(0,4)))].sort();
+  const ychips=years.map(y=>`<button class="chip ${y===regYear?'on':''}" onclick="setRegYear(${y})">${y}</button>`).join('');
+  return `
+  <p class="section-intro">The attendance register for every Sunday across 2026–2028. Green = present, orange = absent, blank = not yet recorded. Tap any cell to toggle a member's attendance — edits save automatically. Pick a year below; recorded weeks are pre-filled, future Sundays are open for marking.</p>
+  <div class="toolbar"><input type="text" placeholder="Find a member…" value="${regSearch}" oninput="regSearch=this.value;renderRegister()"><span style="display:flex;gap:6px;align-items:center">${ychips}</span><button class="btn" onclick="openAddMember()">+ Add Member</button><span class="muted">${DATA.data_dates.length} weeks pre-filled from records</span></div>
+  <div class="legend" style="margin:0 0 14px"><span><i class="sw" style="background:rgba(95,115,85,.5)"></i> Present</span><span><i class="sw" style="background:rgba(194,104,63,.4)"></i> Absent</span><span><i class="sw" style="background:#ece2d2"></i> Not recorded</span></div>
+  <div id="regHost"></div>`;
+}
+function setRegYear(y){regYear=y;renderRegister();document.querySelectorAll('.toolbar .chip').forEach(c=>c.classList.toggle('on',+c.textContent===y));}
+function renderRegister(){const h=document.getElementById('regHost');if(h)h.innerHTML=registerHTML();}
+function registerHTML(){
+  let mem=DATA.members.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  if(regSearch)mem=mem.filter(m=>m.name.toLowerCase().includes(regSearch.toLowerCase()));
+  const days=DATA.sundays.filter(s=>+s.slice(0,4)===regYear);
+  const today=new Date();
+  const heads=days.map(iso=>`<th class="${new Date(iso+'T00:00')>today?'future':''}">${fmtDate(iso)}</th>`).join('');
+  const body=mem.map(m=>{const cells=days.map(iso=>{const v=memMark(m,iso);const cls=v===1?'p':(v===0?'a':'n');const sym=v===1?'✓':(v===0?'·':'');return `<td><div class="cellbtn ${cls}" onclick="toggleMark('${esc(m.name)}','${iso}')">${sym}</div></td>`;}).join('');return `<tr><td class="namecol">${m.name}</td>${cells}</tr>`;}).join('');
+  return `<div class="reg-wrap"><table class="reg"><thead><tr><th class="namehead">Member</th>${heads}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+function toggleMark(name,iso){const m=DATA.members.find(x=>x.name===name);if(!m)return;const cur=memMark(m,iso);const next=cur===null?1:(cur===1?0:1);overrides.marks[name+'|'+iso]=next;persist();postGAS('attendance',{name:name,date:iso,value:next});renderRegister();}
+
+/* ============================ SERVICE DURATION ============================ */
+let durSearch='', durYear=2026;
+function serviceDurStats(){
+  // per service (data_date): avg & total minutes among those with duration>0
+  const per={};
+  DATA.data_dates.forEach(iso=>{
+    let s=0,c=0;
+    DATA.members.forEach(m=>{const v=memDur(m,iso);if(v&&v>0){s+=v;c++;}});
+    per[iso]={avg:c?s/c:0,total:s,count:c};
+  });
+  return per;
+}
+function viewDuration(){
+  const per=serviceDurStats();
+  const dates=DATA.data_dates;
+  const avgs=dates.map(d=>per[d].avg).filter(x=>x>0);
+  const overallAvg=avgs.length?Math.round(avgs.reduce((a,b)=>a+b,0)/avgs.length):0;
+  let totalMin=0,longest=0;
+  DATA.members.forEach(m=>{const dm=durMap(m);Object.values(dm).forEach(v=>{if(v>0){totalMin+=v;if(v>longest)longest=v;}});});
+  const memAvgs=DATA.members.map(m=>({m,a:avgDuration(m)})).filter(x=>x.a>0).sort((a,b)=>b.a-a.a);
+  const longestStayers=memAvgs.slice(0,8);
+  const maxA=longestStayers.length?longestStayers[0].a:1;
+  const ranks=longestStayers.map(x=>`<div class="rankrow"><div class="nm clickable" onclick="openMember('${esc(x.m.name)}')">${x.m.name}</div><div class="bar"><i style="width:${x.a/maxA*100}%"></i></div><div class="vv">${Math.round(x.a)}m</div></div>`).join('');
+  const years=[...new Set(DATA.sundays.map(s=>+s.slice(0,4)))].sort();
+  const ychips=years.map(y=>`<button class="chip ${y===durYear?'on':''}" onclick="setDurYear(${y})">${y}</button>`).join('');
+  return `
+  <p class="section-intro">How long each member actually stays in service, Sunday by Sunday — a measure of engagement depth beyond simply showing up. Enter or correct any member's minutes in the grid below (it saves automatically), and read the trends in the analysis above.</p>
+  <div class="grid cards" style="margin-bottom:18px">
+    <div class="card stat s-teal"><span class="ic">⏱</span><div class="k">Avg. Time in Service</div><div class="v">${overallAvg}<span style="font-size:14px;color:var(--ink-faint)">min</span></div><div class="d">per attending member</div></div>
+    <div class="card stat s-purple"><div class="k">Longest Single Stay</div><div class="v">${Math.round(longest)}<span style="font-size:14px;color:var(--ink-faint)">min</span></div><div class="d">recorded this year</div></div>
+    <div class="card stat s-green"><div class="k">Total Time Given</div><div class="v">${Math.round(totalMin/60)}<span style="font-size:14px;color:var(--ink-faint)">hrs</span></div><div class="d">all members combined</div></div>
+    <div class="card stat s-teal"><div class="k">Weeks Tracked</div><div class="v">${avgs.length}</div><div class="d">services with duration data</div></div>
+  </div>
+  <div class="two" style="margin-bottom:16px">
+    <div class="panel"><div class="ph"><div><h3>Average Duration per Service</h3><div class="muted">how long services run, week by week (minutes)</div></div></div><div class="chartbox"><canvas id="durTrend"></canvas></div></div>
+    <div class="panel"><div class="ph"><div><h3>Longest-Staying Members</h3><div class="muted">by average minutes in service</div></div></div><div class="pill-list">${ranks||'<div class="muted">No duration data yet</div>'}</div></div>
+  </div>
+  <div class="panel"><div class="ph"><div><h3>Duration Register</h3><div class="muted">minutes each member stayed, per Sunday — tap a cell to edit</div></div><span style="display:flex;gap:6px;align-items:center"><input type="text" placeholder="Find a member…" value="${durSearch}" oninput="durSearch=this.value;renderDurationGrid()" style="min-width:160px">${ychips}</span></div>
+    <div id="durHost"></div>
+  </div>`;
+}
+function setDurYear(y){durYear=y;renderDurationGrid();}
+function drawDuration(){
+  const per=serviceDurStats();const labels=DATA.data_dates.map(fmtDate);const vals=DATA.data_dates.map(d=>Math.round(per[d].avg));
+  if(!vals.some(v=>v>0))return;
+  charts.dt=new Chart(document.getElementById('durTrend'),{type:'line',data:{labels,datasets:[{label:'Avg minutes',data:vals,borderColor:'#2f8079',backgroundColor:(ctx)=>{const c=ctx.chart.ctx;const g=c.createLinearGradient(0,0,0,300);g.addColorStop(0,'rgba(47,128,121,.28)');g.addColorStop(1,'rgba(47,128,121,0)');return g;},fill:true,tension:.35,borderWidth:2.5,pointRadius:3,pointBackgroundColor:'#2f8079',pointBorderColor:'#fff',pointBorderWidth:2}]},options:baseOpts(false)});
+}
+function durColor(v){ if(v==null||v==='')return ''; const t=Math.max(0,Math.min(1,v/120)); const a=(0.10+t*0.5).toFixed(2); return `background:rgba(47,128,121,${a});color:${t>0.55?'#fff':'var(--ink)'};font-weight:600`; }
+function renderDurationGrid(){const h=document.getElementById('durHost');if(h)h.innerHTML=durationGridHTML();}
+function durationGridHTML(){
+  let mem=DATA.members.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  if(durSearch)mem=mem.filter(m=>m.name.toLowerCase().includes(durSearch.toLowerCase()));
+  const days=DATA.sundays.filter(s=>+s.slice(0,4)===durYear);
+  const today=new Date();
+  const heads=days.map(iso=>`<th class="${new Date(iso+'T00:00')>today?'future':''}">${fmtDate(iso)}</th>`).join('');
+  const body=mem.map(m=>{
+    const cells=days.map(iso=>{const v=memDur(m,iso);return `<td><input type="number" min="0" class="dur-cell" style="${durColor(v)}" value="${v==null?'':v}" onchange="setDuration('${esc(m.name)}','${iso}',this.value)"></td>`;}).join('');
+    return `<tr><td class="namecol clickable" onclick="openMember('${esc(m.name)}')">${m.name} <span style="color:var(--gold-d)">→</span></td>${cells}</tr>`;
+  }).join('');
+  return `<div class="reg-wrap"><table class="reg"><thead><tr><th class="namehead">Member</th>${heads}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+function setDuration(name,iso,v){const m=DATA.members.find(x=>x.name===name);if(!m)return;overrides.duration=overrides.duration||{};const n=v===''?null:Math.max(0,Math.round(+v||0));overrides.duration[name+'|'+iso]=n;persist();if(typeof postGAS==='function')postGAS('duration',{name:name,date:iso,value:n});Object.values(charts).forEach(c=>c&&c.destroy());charts={};renderView();}
+</script>
+<script>
+/* ============================ PASTOR ENGAGEMENT ============================ */
+function pastorGroups(){const g={};DATA.members.forEach(m=>{if(!m.pastor)return;(g[m.pastor]=g[m.pastor]||[]).push(m);});return g;}
+function viewPastors(){
+  const g=pastorGroups();
+  const cards=Object.entries(g).map(([p,list])=>{
+    const showing=list.filter(m=>weeksSince(m)<3 && servicesPresent(m)>0);
+    const notShowing=list.filter(m=>!(weeksSince(m)<3 && servicesPresent(m)>0));
+    const avgRate=Math.round(list.reduce((a,m)=>a+attendanceRate(m),0)/list.length*100);
+    const durs=list.map(avgDuration).filter(d=>d>0);
+    const avgDur=durs.length?Math.round(durs.reduce((a,b)=>a+b,0)/durs.length):0;
+    const showChips=showing.length?showing.sort((a,b)=>attendanceRate(b)-attendanceRate(a)).map(m=>`<span class="namechip show" onclick="openMember('${esc(m.name)}')">${m.name} · ${Math.round(attendanceRate(m)*100)}%</span>`).join(''):'<div class="muted">None active in the last 2 weeks</div>';
+    const noChips=notShowing.length?notShowing.sort((a,b)=>weeksSince(b)-weeksSince(a)).map(m=>{const ws=weeksSince(m);return `<span class="namechip noshow" onclick="openMember('${esc(m.name)}')">${m.name} · ${ws>=99?'never':ws+'w'}</span>`;}).join(''):'<div class="muted">Everyone is showing up. 🎉</div>';
+    return `<div class="pastorcard">
+      <div class="pc-head"><div><h3>${p}</h3><div class="meta">${list.length} members assigned</div></div>
+        <div style="text-align:right"><div style="font-family:Fraunces;font-size:30px;font-weight:600;color:var(--gold-l)">${showing.length}/${list.length}</div><div class="meta">showing up</div></div></div>
+      <div class="pc-body">
+        <div class="minigrid" style="margin-bottom:6px">
+          <div class="mini"><div class="k">Avg Attend Rate</div><div class="v">${avgRate}%</div></div>
+          <div class="mini"><div class="k">Avg Time in Service</div><div class="v">${avgDur}<span style="font-size:13px">m</span></div></div>
+          <div class="mini"><div class="k">Engaged Flock</div><div class="v">${pct(showing.length,list.length)}</div></div>
+        </div>
+        <div class="split-head"><span class="dot g"></span> Showing up (${showing.length})</div>
+        <div class="namelist">${showChips}</div>
+        <div class="split-head"><span class="dot r"></span> Not showing up — needs follow-up (${notShowing.length})</div>
+        <div class="namelist">${noChips}</div>
+      </div></div>`;
+  }).join('');
+  return `
+  <p class="section-intro">How each pastor's assigned flock is engaging — by name. For every shepherd you can see exactly who is showing up (active in the last two weeks) and who has gone quiet and needs a follow-up, along with the average attendance rate and how long their people stay in service. Click any name to open their profile.</p>
+  <div class="panel" style="margin-bottom:16px"><div class="ph"><div><h3>Pastor Engagement Comparison</h3><div class="muted">assigned members currently showing up vs. those who have gone quiet</div></div></div><div class="chartbox"><canvas id="pastorChart"></canvas></div></div>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(330px,1fr))">${cards}</div>`;
+}
+function drawPastors(){
+  const g=pastorGroups();const labels=Object.keys(g);
+  const show=labels.map(p=>g[p].filter(m=>weeksSince(m)<3&&servicesPresent(m)>0).length);
+  const no=labels.map((p,i)=>g[p].length-show[i]);
+  charts.p=new Chart(document.getElementById('pastorChart'),{type:'bar',
+    data:{labels,datasets:[{label:'Showing up',data:show,backgroundColor:'#5f7355',borderRadius:6,stack:'s'},{label:'Not showing up',data:no,backgroundColor:'#c2683f',borderRadius:6,stack:'s'}]},
+    options:{...baseOpts(true),scales:{x:{stacked:true,grid:{display:false},ticks:{font:{family:'Outfit'},color:'#5f5366'}},y:{stacked:true,grid:{color:'#efe7d8'},ticks:{font:{family:'Outfit'},color:'#5f5366'}}}}});
+}
+
+/* ============================ FIRST TIMERS ============================ */
+function didReturn(f){
+  if(f.weeks.length>1)return true;
+  const m=DATA.members.find(x=>nkey(x.name)===nkey(f.name));
+  if(m){const first=f.weeks[0];let after=false;DATA.data_dates.forEach(iso=>{if(memMark(m,iso)===1&&(!first||iso>first))after=true;});if(after)return true;}
+  return false;
+}
+function viewFirstTimers(){
+  const ft=DATA.firsttimers;const ret=ft.filter(didReturn),never=ft.filter(f=>!didReturn(f));
+  const inv={};ft.forEach(f=>{const k=f.invited_by||'Unknown / not recorded';inv[k]=(inv[k]||0)+1;});
+  const invSorted=Object.entries(inv).sort((a,b)=>b[1]-a[1]);
+  const known=invSorted.filter(x=>x[0]!=='Unknown / not recorded');
+  const maxInv=Math.max(1,...invSorted.map(x=>x[1]));
+  const invBars=invSorted.map(([n,c])=>`<div class="rankrow"><div class="nm">${n}</div><div class="bar"><i style="width:${c/maxInv*100}%"></i></div><div class="vv">${c}</div></div>`).join('');
+  const monthly={};ft.forEach(f=>{if(f.weeks[0]){const mo=monthOf(f.weeks[0]);monthly[mo]=(monthly[mo]||0)+1;}});
+  const rows=ft.slice().sort((a,b)=>(a.weeks[0]||'9').localeCompare(b.weeks[0]||'9')).map(f=>{const r=didReturn(f);return `<tr class="clickable" onclick="openEditFirstTimer('${esc(f.name)}','${f.weeks[0]||''}')"><td class="name-cell">${f.name}<span class="arrow">✎</span></td><td>${f.invited_by||'<span class="muted">—</span>'}</td><td>${f.weeks[0]?fmtFull(f.weeks[0]):'<span class="muted">—</span>'}</td><td>${f.weeks.length}</td><td>${r?'<span class="tag ret">Returned</span>':'<span class="tag no">Not yet</span>'}</td></tr>`;}).join('');
+  return `
+  <p class="section-intro">Tracking visitors from their first Sunday onward — when they came, who invited them, and whether they came back. The retention split shows how well we convert first timers into regulars; the leaderboard shows who is bringing the most people through the doors.</p>
+  <div class="toolbar"><button class="btn" onclick="openAddFirstTimer()">+ Add First Timer</button></div>
+  <div class="grid cards" style="margin-bottom:18px">
+    <div class="card stat s-purple"><span class="ic">✦</span><div class="k">Total First Timers</div><div class="v">${ft.length}</div><div class="d">recorded this year</div></div>
+    <div class="card stat s-green"><div class="k">Returned</div><div class="v">${ret.length}</div><div class="d">${pct(ret.length,ft.length)} retention</div></div>
+    <div class="card stat s-red"><div class="k">Never Returned</div><div class="v">${never.length}</div><div class="d">one-time visits</div></div>
+    <div class="card stat s-teal"><div class="k">Active Inviters</div><div class="v">${known.length}</div><div class="d">people bringing guests</div></div>
+  </div>
+  <div class="two">
+    <div class="panel"><div class="ph"><div><h3>Who's Inviting?</h3><div class="muted">first timers credited to each inviter</div></div></div><div class="pill-list">${invBars}</div>${known.length?`<div class="muted" style="margin-top:14px">🏆 Highest: <b>${known[0][0]}</b> (${known[0][1]}) · Lowest: <b>${known[known.length-1][0]}</b> (${known[known.length-1][1]})</div>`:''}</div>
+    <div class="panel"><div class="ph"><div><h3>Retention</h3><div class="muted">did they come back?</div></div></div><div class="chartbox sm"><canvas id="ftPie"></canvas></div>
+      <div class="ph" style="margin:18px 0 6px"><div><h4 style="font-size:15px">Monthly Inflow</h4></div></div><div class="chartbox sm" style="height:170px"><canvas id="ftMonth"></canvas></div></div>
+  </div>
+  <div class="panel" style="margin-top:16px"><div class="ph"><div><h3>First Timer Log</h3></div></div><div class="tbl-wrap" style="box-shadow:none"><table><thead><tr><th>Name</th><th>Invited By</th><th>First Visit</th><th>Times Seen</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+function drawFirstTimers(){
+  const ft=DATA.firsttimers;const r=ft.filter(didReturn).length,n=ft.length-r;
+  charts.ft=new Chart(document.getElementById('ftPie'),{type:'doughnut',data:{labels:['Returned','Never returned'],datasets:[{data:[r,n],backgroundColor:['#5f7355','#c2683f'],borderColor:'#fffdfa',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'bottom',labels:{font:{family:'Outfit',size:13},color:'#5f5366',padding:14,usePointStyle:true}}}}});
+  const monthly={};ft.forEach(f=>{if(f.weeks[0]){const mo=monthOf(f.weeks[0]);monthly[mo]=(monthly[mo]||0)+1;}});
+  const ml=MONTHS.filter(m=>monthly[m]);
+  charts.ftm=new Chart(document.getElementById('ftMonth'),{type:'bar',data:{labels:ml,datasets:[{data:ml.map(m=>monthly[m]),backgroundColor:'#cb9a2f',borderRadius:6,maxBarThickness:40}]},options:baseOpts(false)});
+}
+
+/* ============================ FOLLOW-UP ============================ */
+function viewFollowup(){
+  const mem=DATA.members.map(m=>({m,ls:lastSeen(m),ws:weeksSince(m),sp:servicesPresent(m)}));
+  mem.sort((a,b)=>b.ws-a.ws);
+  const rows=mem.map(({m,ls,ws,sp})=>{let flag,cls;if(sp===0){flag='Never seen';cls='no';}else if(ws>=6){flag=ws+' wks ago';cls='no';}else if(ws>=3){flag=ws+' wks ago';cls='warn';}else{flag='Recent';cls='ret';}
+    return `<tr class="clickable" onclick="openMember('${esc(m.name)}')"><td class="name-cell">${m.name}<span class="arrow">→</span></td><td><span class="badge b-${STATUS_KEY[memStatus(m)]}">${memStatus(m)}</span></td><td>${m.pastor||'<span class="muted">—</span>'}</td><td>${ls?fmtFull(ls):'<span class="muted">not yet</span>'}</td><td><span class="tag ${cls}">${flag}</span></td></tr>`;}).join('');
+  const need=mem.filter(x=>x.ws>=4).length;
+  return `
+  <p class="section-intro">A follow-up priority list — every member ranked by how long since they were last in service. The people at the top are the ones to call, visit, or check on this week.</p>
+  <div class="grid cards" style="margin-bottom:18px">
+    <div class="card stat s-red"><span class="ic">🔔</span><div class="k">Need Follow-Up</div><div class="v">${need}</div><div class="d">not seen 4+ weeks</div></div>
+    <div class="card stat s-green"><div class="k">Seen Recently</div><div class="v">${mem.filter(x=>x.ws<3&&x.sp>0).length}</div><div class="d">within last 2 weeks</div></div>
+    <div class="card stat s-purple"><div class="k">Never Recorded</div><div class="v">${mem.filter(x=>x.sp===0).length}</div><div class="d">no attendance yet</div></div>
+  </div>
+  <div class="panel"><div class="ph"><div><h3>Last Seen — Follow-Up Priority</h3><div class="muted">most overdue first · click a name for the full profile</div></div></div><div class="tbl-wrap" style="box-shadow:none"><table><thead><tr><th>Member</th><th>Status</th><th>Pastor</th><th>Last Seen</th><th>Flag</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+
+/* ============================ MEMBER MODAL ============================ */
+function engagementLabel(m){
+  const sp=servicesPresent(m); if(sp===0) return ['Not yet seen','b-Unclassified'];
+  const ws=weeksSince(m), rate=attendanceRate(m);
+  if(ws>=4) return ['Drifting — follow up','b-Drifting'];
+  if(rate>=0.8) return ['Highly engaged','b-Growing'];
+  if(rate>=0.5) return ['Engaged','b-Active'];
+  return ['Occasional','b-Worker'];
+}
+function openMember(name){
+  const m=DATA.members.find(x=>x.name===name);if(!m)return;
+  const st=memStatus(m),sp=servicesPresent(m),rate=attendanceRate(m),ad=avgDuration(m),ls=lastSeen(m);
+  const _dm=durMap(m);const totalDur=Object.values(_dm).reduce((a,b)=>a+b,0);
+  const durWeeks=Object.keys(_dm).length;
+  const longest=Object.values(_dm).reduce((a,b)=>Math.max(a,b),0);
+  const el=engagementLabel(m);
+  const opts=SIX_STATUSES.concat(st==='Unclassified'?['Unclassified']:[]);
+  const sel=`<select class="statusctl" id="statusSel">${opts.map(s=>`<option ${s===st?'selected':''}>${s}</option>`).join('')}</select>`;
+  document.getElementById('modal').innerHTML=`
+    <div class="modal-head"><div class="modal-close" onclick="closeModal()">✕</div><div class="avatar">${initials(m.name)}</div><h2>${m.name}</h2>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><span class="badge b-${STATUS_KEY[st]}">${st}</span> ${isWorker(m)?'<span class="badge b-Worker">⚜ Worker</span>':''} <span class="badge ${el[1]}">${el[0]}</span></div></div>
+    <div class="modal-body">
+      <div class="minigrid">
+        <div class="mini"><div class="k">Services Present</div><div class="v">${sp}<span style="font-size:13px;color:var(--ink-faint)">/${totalServices()}</span></div></div>
+        <div class="mini"><div class="k">Attendance Rate</div><div class="v">${Math.round(rate*100)}<span style="font-size:14px">%</span></div></div>
+        <div class="mini"><div class="k">Avg. Time in Service</div><div class="v">${Math.round(ad)}<span style="font-size:13px;color:var(--ink-faint)">min</span></div></div>
+        <div class="mini"><div class="k">Longest Stay</div><div class="v">${Math.round(longest)}<span style="font-size:13px;color:var(--ink-faint)">min</span></div></div>
+      </div>
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);font-weight:600;margin-bottom:4px">Engagement — minutes in service by Sunday</div>
+      <div style="position:relative;height:170px;margin-bottom:6px"><canvas id="memChart"></canvas></div>
+      <div class="muted" style="margin-bottom:6px">Total time given: <b>${Math.round(totalDur)} min</b> (${(totalDur/60).toFixed(1)} hrs) over ${durWeeks} recorded service${durWeeks===1?'':'s'}.</div>
+      <div style="margin:16px 0 4px">
+        <div class="bioline"><span class="l">Assigned Pastor</span><span class="r">${m.pastor||'—'}</span></div>
+        <div class="bioline"><span class="l">Phone</span><span class="r">${m.phone||'—'}</span></div>
+        <div class="bioline"><span class="l">Location</span><span class="r">${m.location||'—'}</span></div>
+        <div class="bioline"><span class="l">Last Attendance</span><span class="r">${ls?fmtFull(ls):'Not yet recorded'}</span></div>
+      </div>
+      <div class="status-row"><span style="font-weight:600;font-size:14px">Change status:</span>${sel}<button class="btn" onclick="saveStatus('${esc(m.name)}')">Update</button><button class="btn ghost" onclick="openEditMember('${esc(m.name)}')">✎ Edit details</button><button class="btn ghost" onclick="closeModal()">Close</button></div>
+    </div>`;
+  document.getElementById('modalbg').classList.add('show');
+  drawMemberChart(m);
+}
+function drawMemberChart(m){
+  const cv=document.getElementById('memChart');if(!cv||typeof Chart==='undefined')return;
+  if(charts.mem){charts.mem.destroy();charts.mem=null;}
+  const dates=DATA.data_dates;const _dm=durMap(m);
+  const mins=dates.map(iso=>{const v=memDur(m,iso);return (v&&v>0)?v:0;});
+  const present=dates.map(iso=>memMark(m,iso)===1);
+  charts.mem=new Chart(cv,{type:'bar',data:{labels:dates.map(fmtDate),datasets:[{label:'Minutes',data:mins,
+    backgroundColor:mins.map((v,i)=>v>0?'#2f8079':(present[i]?'rgba(95,115,85,.45)':'rgba(194,104,63,.25)')),borderRadius:4,maxBarThickness:18}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const i=c.dataIndex;return c.parsed.y>0?c.parsed.y+' min':(present[i]?'present (no duration logged)':'absent');}}}},
+      scales:{x:{grid:{display:false},ticks:{font:{family:'Outfit',size:9},color:'#928697',maxRotation:60,minRotation:60}},
+        y:{beginAtZero:true,grid:{color:'#efe7d8'},ticks:{font:{family:'Outfit',size:10},color:'#928697'}}}}});
+}
+function saveStatus(name){const sel=document.getElementById('statusSel');if(!sel)return;const st=sel.value;overrides.status[name]=st;persist();postGAS('status',{name:name,status:st});openMember(name);if(active==='members')renderMemberTable();else renderView();}
+function closeModal(){if(charts.mem){charts.mem.destroy();charts.mem=null;}document.getElementById('modalbg').classList.remove('show');}
+
+/* ============================ EDIT MEMBER ============================ */
+function openEditMember(name){
+  const m=DATA.members.find(x=>x.name===name);if(!m)return;
+  const pastors=[...new Set(DATA.members.map(x=>x.pastor).filter(Boolean))].sort();
+  const popt=pastors.map(p=>`<option ${p===m.pastor?'selected':''}>${p}</option>`).join('');
+  document.getElementById('modal').innerHTML=`
+    <div class="modal-head"><div class="modal-close" onclick="closeModal()">✕</div><div class="avatar">✎</div><h2>Edit Member</h2>
+      <div class="muted" style="margin-top:6px">Correct the name, phone, location or pastor</div></div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div style="grid-column:1/-1"><label class="amlab">Full name *</label><input type="text" id="emName" value="${(m.name||'').replace(/"/g,'&quot;')}"></div>
+        <div><label class="amlab">Phone</label><input type="text" id="emPhone" value="${(m.phone||'').replace(/"/g,'&quot;')}"></div>
+        <div><label class="amlab">Location</label><input type="text" id="emLoc" value="${(m.location||'').replace(/"/g,'&quot;')}"></div>
+        <div><label class="amlab">Status</label><select id="emStatus" class="statusctl" style="width:100%">${SIX_STATUSES.concat(memStatus(m)==='Unclassified'?['Unclassified']:[]).map(s=>`<option ${s===memStatus(m)?'selected':''}>${s}</option>`).join('')}</select></div>
+        <div><label class="amlab">Assigned Pastor</label><select id="emPastor" class="statusctl" style="width:100%"><option value="">— none —</option>${popt}</select></div>
+      </div>
+      <div id="emErr" style="color:var(--drifting);font-size:13px;margin-top:12px;display:none"></div>
+      <div class="status-row" style="margin-top:20px"><button class="btn" onclick="saveEditMember('${esc(name)}')">Save changes</button><button class="btn ghost" onclick="openMember('${esc(name)}')">Cancel</button></div>
+    </div>`;
+  document.getElementById('modalbg').classList.add('show');
+}
+function saveEditMember(origName){
+  const g=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
+  const m=DATA.members.find(x=>x.name===origName);if(!m)return;
+  const err=document.getElementById('emErr');
+  const newName=g('emName');
+  if(!newName){err.textContent='Name cannot be empty.';err.style.display='block';return;}
+  if(newName!==origName && DATA.members.find(x=>nkey(x.name)===nkey(newName))){err.textContent='Another member already has that name.';err.style.display='block';return;}
+  const newStatus=g('emStatus')||memStatus(m);
+  if(newName!==origName){
+    // migrate name-keyed overrides
+    if(overrides.status[origName]!==undefined){overrides.status[newName]=overrides.status[origName];delete overrides.status[origName];}
+    Object.keys(overrides.marks).forEach(k=>{if(k.indexOf(origName+'|')===0){overrides.marks[newName+k.slice(origName.length)]=overrides.marks[k];delete overrides.marks[k];}});
+  }
+  m.name=newName;m.phone=g('emPhone')||null;m.location=g('emLoc')||null;m.pastor=g('emPastor')||null;m.status=newStatus;
+  overrides.status[newName]=newStatus;
+  overrides.profileEdits=overrides.profileEdits||[];
+  overrides.profileEdits.push({from:origName,set:{name:newName,phone:m.phone,location:m.location,pastor:m.pastor,status:newStatus}});
+  persist();
+  if(typeof postGAS==='function')postGAS('editMember',{original:origName,name:newName,phone:m.phone,location:m.location,pastor:m.pastor,status:newStatus});
+  openMember(newName);
+}
+
+/* ============================ EDIT FIRST TIMER ============================ */
+function openEditFirstTimer(name,date){
+  const f=DATA.firsttimers.find(x=>x.name===name&&(x.weeks[0]||'')===(date||''));if(!f)return;
+  document.getElementById('modal').innerHTML=`
+    <div class="modal-head"><div class="modal-close" onclick="closeModal()">✕</div><div class="avatar">✦</div><h2>Edit First Timer</h2>
+      <div class="muted" style="margin-top:6px">Correct the name, inviter, contact or first-visit date</div></div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div style="grid-column:1/-1"><label class="amlab">Full name *</label><input type="text" id="efName" value="${(f.name||'').replace(/"/g,'&quot;')}"></div>
+        <div><label class="amlab">Invited by</label><input type="text" id="efInv" value="${(f.invited_by||'').replace(/"/g,'&quot;')}"></div>
+        <div><label class="amlab">Contact</label><input type="text" id="efContact" value="${(f.contacts||'').replace(/"/g,'&quot;')}"></div>
+        <div style="grid-column:1/-1"><label class="amlab">First visit</label><input type="date" id="efDate" value="${f.weeks[0]||''}"></div>
+      </div>
+      <div id="efErr" style="color:var(--drifting);font-size:13px;margin-top:12px;display:none"></div>
+      <div class="status-row" style="margin-top:20px"><button class="btn" onclick="saveEditFirstTimer('${esc(name)}','${date||''}')">Save changes</button><button class="btn ghost" onclick="closeModal()">Cancel</button></div>
+    </div>`;
+  document.getElementById('modalbg').classList.add('show');
+}
+function saveEditFirstTimer(origName,origDate){
+  const g=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
+  const f=DATA.firsttimers.find(x=>x.name===origName&&(x.weeks[0]||'')===(origDate||''));if(!f)return;
+  const err=document.getElementById('efErr');const nm=g('efName');
+  if(!nm){err.textContent='Name cannot be empty.';err.style.display='block';return;}
+  f.name=nm;f.invited_by=g('efInv')||null;f.contacts=g('efContact')||null;const nd=g('efDate')||f.weeks[0];f.weeks=[nd];
+  overrides.ftEdits=overrides.ftEdits||[];
+  overrides.ftEdits.push({from:{name:origName,date:origDate},set:{name:nm,invited_by:f.invited_by,contacts:f.contacts,date:nd}});
+  persist();
+  if(typeof postGAS==='function')postGAS('editFirstTimer',{original:origName,originalDate:origDate,name:nm,invited_by:f.invited_by,contacts:f.contacts,date:nd});
+  closeModal();active='firsttimers';renderNav();renderView();
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+/* ============================ ADD MEMBER / WORKER ============================ */
+function openAddMember(preStatus){
+  const isW=preStatus==='Worker';
+  const pastors=[...new Set(DATA.members.map(m=>m.pastor).filter(Boolean))].sort();
+  document.getElementById('modal').innerHTML=`
+    <div class="modal-head"><div class="modal-close" onclick="closeModal()">✕</div><div class="avatar">+</div><h2>${isW?'Add New Worker':'Add New Member'}</h2>
+      <div class="muted" style="margin-top:6px">${isW?'Set apart a new worker for the house':'Add someone to the Kadosh Royal Ecclesia roll'}</div></div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div style="grid-column:1/-1"><label class="amlab">Full name *</label><input type="text" id="amName" placeholder="e.g. Ama Owusu"></div>
+        <div><label class="amlab">Phone</label><input type="text" id="amPhone" placeholder="optional"></div>
+        <div><label class="amlab">Location</label><input type="text" id="amLoc" placeholder="optional"></div>
+        <div><label class="amlab">Status</label><select id="amStatus" class="statusctl" style="width:100%">${SIX_STATUSES.map(s=>`<option ${s===(preStatus||'Growing Member')?'selected':''}>${s}</option>`).join('')}</select></div>
+        <div><label class="amlab">Assigned Pastor</label><select id="amPastor" class="statusctl" style="width:100%"><option value="">— none —</option>${pastors.map(p=>`<option>${p}</option>`).join('')}</select></div>
+      </div>
+      <div id="amErr" style="color:var(--drifting);font-size:13px;margin-top:12px;display:none"></div>
+      <div class="status-row" style="margin-top:20px"><button class="btn" onclick="saveMember()">${isW?'Add Worker':'Add to Roll'}</button><button class="btn ghost" onclick="closeModal()">Cancel</button></div>
+    </div>`;
+  document.getElementById('modalbg').classList.add('show');
+  setTimeout(()=>{const n=document.getElementById('amName');if(n)n.focus();},50);
+}
+function saveMember(){
+  const g=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
+  const name=g('amName');
+  const err=document.getElementById('amErr');
+  if(!name){err.textContent='Please enter a name.';err.style.display='block';return;}
+  if(DATA.members.find(x=>nkey(x.name)===nkey(name))){err.textContent='A member with that name already exists.';err.style.display='block';return;}
+  const m={name,phone:g('amPhone')||null,location:g('amLoc')||null,status:g('amStatus')||'Growing Member',pastor:g('amPastor')||null,attendance:{},duration:{}};
+  DATA.members.push(m);
+  overrides.added=overrides.added||[];overrides.added.push(m);persist();
+  if(typeof postNewMember==='function')postNewMember(m);
+  closeModal();
+  active=m.status==='Worker'?'workers':'members';renderNav();renderView();
+}
+
+/* ============================ ADD FIRST TIMER ============================ */
+function openAddFirstTimer(){
+  const last=DATA.data_dates[DATA.data_dates.length-1]||DATA.sundays[0];
+  const inviters=[...new Set(DATA.firsttimers.map(f=>f.invited_by).filter(Boolean))].sort();
+  document.getElementById('modal').innerHTML=`
+    <div class="modal-head"><div class="modal-close" onclick="closeModal()">✕</div><div class="avatar">✦</div><h2>Add First Timer</h2>
+      <div class="muted" style="margin-top:6px">Log a new visitor's first Sunday</div></div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div style="grid-column:1/-1"><label class="amlab">Full name *</label><input type="text" id="ftName" placeholder="e.g. Kojo Mensah"></div>
+        <div><label class="amlab">Invited by</label><input type="text" id="ftInv" list="ftInvList" placeholder="who brought them?"><datalist id="ftInvList">${inviters.map(i=>`<option value="${i.replace(/"/g,'&quot;')}">`).join('')}</datalist></div>
+        <div><label class="amlab">Contact</label><input type="text" id="ftContact" placeholder="phone / optional"></div>
+        <div style="grid-column:1/-1"><label class="amlab">First visit (Sunday)</label><input type="date" id="ftDate" value="${last}"></div>
+      </div>
+      <div id="ftErr" style="color:var(--drifting);font-size:13px;margin-top:12px;display:none"></div>
+      <div class="status-row" style="margin-top:20px"><button class="btn" onclick="saveFirstTimer()">Add First Timer</button><button class="btn ghost" onclick="closeModal()">Cancel</button></div>
+    </div>`;
+  document.getElementById('modalbg').classList.add('show');
+  setTimeout(()=>{const n=document.getElementById('ftName');if(n)n.focus();},50);
+}
+function saveFirstTimer(){
+  const g=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
+  const name=g('ftName');const err=document.getElementById('ftErr');
+  if(!name){err.textContent='Please enter a name.';err.style.display='block';return;}
+  const date=g('ftDate')||DATA.data_dates[DATA.data_dates.length-1];
+  const f={name,invited_by:g('ftInv')||null,contacts:g('ftContact')||null,weeks:[date]};
+  DATA.firsttimers.push(f);
+  overrides.addedFT=overrides.addedFT||[];overrides.addedFT.push(f);persist();
+  if(typeof postNewFirstTimer==='function')postNewFirstTimer(f);
+  closeModal();active='firsttimers';renderNav();renderView();
+}
+function goldGrad(){return ctx=>{const c=ctx.chart.ctx;const g=c.createLinearGradient(0,0,0,300);g.addColorStop(0,'rgba(205,164,52,.32)');g.addColorStop(1,'rgba(205,164,52,0)');return g;};}
+function baseOpts(legend){return {responsive:true,maintainAspectRatio:false,
+  plugins:{legend:{display:!!legend,position:'top',align:'end',labels:{font:{family:'Outfit',size:12},color:'#5f5366',usePointStyle:true,boxWidth:8}},
+    tooltip:{backgroundColor:'#26093f',titleFont:{family:'Fraunces'},bodyFont:{family:'Outfit'},padding:10,cornerRadius:8}},
+  scales:{x:{grid:{display:false},ticks:{font:{family:'Outfit',size:11},color:'#928697'}},y:{beginAtZero:true,grid:{color:'#efe7d8'},ticks:{font:{family:'Outfit',size:11},color:'#928697'}}}};}
+
+/* ============================ BOOT ============================ */
+(async function(){if(!GAS_URL||GAS_URL.indexOf('PASTE')>=0){document.getElementById('view').innerHTML='<div class="panel"><div class="empty">Setup needed — open index.html and paste your Google Apps Script Web app URL into the <b>GAS_URL</b> line near the top, then redeploy to Netlify.</div></div>';renderNav();return;}try{const r=await fetch(GAS_URL);if(!r.ok)throw 0;DATA=await r.json();}catch(e){document.getElementById('view').innerHTML='<div class="panel"><div class="empty">Could not reach the sheet. Check the Apps Script is deployed as a Web app with access set to <b>Anyone</b>, and that GAS_URL is correct.</div></div>';renderNav();return;}renderNav();renderView();})();
+</script>

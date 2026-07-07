@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ------------------------------------------------------------------ *
+     * Roles: admin (full incl. delete + manage team), editor (add/edit/
+     * mark, no delete), viewer (read only). A user's role lives in
+     * users/{uid}.role. The church owner below is always admin, which
+     * bootstraps the whole system (no manual first-admin step needed).
+     * To hand over ownership, change OWNER_EMAIL here AND in kre-db.js.
+     * ------------------------------------------------------------------ */
+
+    function signedIn() { return request.auth != null; }
+    function ownerEmail() { return 'jeffnathan2@gmail.com'; }
+    function isOwner() { return signedIn() && request.auth.token.email == ownerEmail(); }
+    function myRole() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        : 'viewer';
+    }
+    function isAdmin() { return isOwner() || (signedIn() && myRole() == 'admin'); }
+    function isStaff() { return isAdmin() || (signedIn() && myRole() == 'editor'); }
+
+    // Team / user roles
+    match /users/{uid} {
+      allow read:   if signedIn();
+      allow create: if signedIn() && request.auth.uid == uid;   // self-register as viewer
+      allow update, delete: if isAdmin();
+    }
+
+    // Data collections: everyone signed-in reads; staff write; only admins delete.
+    match /members/{id}     { allow read: if signedIn(); allow create, update: if isStaff(); allow delete: if isAdmin(); }
+    match /pastors/{id}     { allow read: if signedIn(); allow create, update: if isStaff(); allow delete: if isAdmin(); }
+    match /households/{id}  { allow read: if signedIn(); allow create, update: if isStaff(); allow delete: if isAdmin(); }
+    match /attendance/{id}  { allow read: if signedIn(); allow create, update, delete: if isStaff(); }
+    match /services/{id}    { allow read: if signedIn(); allow create, update, delete: if isStaff(); }
+    match /firstTimers/{id} { allow read: if signedIn(); allow create, update, delete: if isStaff(); }
+    match /notes/{id}       { allow read: if signedIn(); allow create, update, delete: if isStaff(); }
+    match /giving/{id}      { allow read: if signedIn(); allow create, update: if isStaff(); allow delete: if isAdmin(); }
+
+    match /{document=**}    { allow read, write: if false; }
+  }
+}
