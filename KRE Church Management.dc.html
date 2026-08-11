@@ -61,6 +61,7 @@
         <label style="{{ ui.lbl }}">Password</label>
         <input type="password" value="{{ login.pass }}" onInput="{{ login.onPass }}" onKeyDown="{{ login.onKey }}" placeholder="••••••••" style="{{ ui.input }};width:100%">
         <sc-if value="{{ login.hasError }}" hint-placeholder-val="{{ false }}"><div style="color:#c2683f;font-size:12.5px;margin-top:11px">{{ login.error }}</div></sc-if>
+        <sc-if value="{{ hasBootError }}" hint-placeholder-val="{{ false }}"><div style="background:#f9ece7;border:1px solid #e3c1b4;color:#a83f2b;border-radius:10px;padding:10px 12px;font-size:12.5px;margin-top:12px">{{ bootError }}</div></sc-if>
         <button onClick="{{ login.onSubmit }}" style="{{ ui.btn }};width:100%;margin-top:18px;padding:12px">Sign in</button>
         <button onClick="{{ login.onDemo }}" style="{{ ui.btnGhost }};width:100%;margin-top:9px">Explore with demo data</button>
       </div>
@@ -95,6 +96,18 @@
 
     <!-- ============ MAIN ============ -->
     <main style="flex:1;min-width:0;padding:28px 34px 70px">
+      <sc-if value="{{ isDemoMode }}" hint-placeholder-val="{{ false }}">
+        <div data-noprint style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fdf3e3;border:1px solid #e8cf9a;color:#8a5a12;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px">
+          <b>Demo data — not connected to the church database.</b><span>Anything you enter here stays in this browser only and will not be shared or kept.</span>
+          <button onClick="{{ onRetryLive }}" style="{{ ui.btnGhost }};margin-left:auto">Connect to live database</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{ hasSaveError }}" hint-placeholder-val="{{ false }}">
+        <div data-noprint style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#f9ece7;border:1px solid #e3c1b4;color:#a83f2b;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px">
+          <b>Not saved.</b><span>{{ saveError }}</span>
+          <button onClick="{{ onDismissError }}" style="{{ ui.btnGhost }};margin-left:auto">Dismiss</button>
+        </div>
+      </sc-if>
       <div style="margin-bottom:18px">
         <div style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#a47d1f;font-weight:600;margin-bottom:7px">{{ crumb }}</div>
         <h1 style="font-family:'Fraunces',serif;font-weight:600;font-size:31px;line-height:1;margin:0;letter-spacing:-.01em">{{ title }}</h1>
@@ -189,7 +202,7 @@
             <div style="{{ ui.panelGold }}">
               <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#a47d1f;font-weight:700">① Overall Headcount</div>
               <div style="{{ ui.muted }};margin:5px 0 12px">Total present incl. visitors &amp; online</div>
-              <input type="number" min="0" value="{{ sunday.headcount }}" onBlur="{{ sunday.setHeadcount }}" onKeyDown="{{ sunday.hcKey }}" placeholder="—" style="width:100%;font-family:'Fraunces',serif;font-size:38px;font-weight:600;color:#2c2233;background:#fff;border:1.5px solid #e7dcc9;border-radius:12px;padding:8px 16px;outline:none;text-align:center">
+              <input type="number" min="0" value="{{ sunday.headcount }}" onInput="{{ sunday.hcType }}" onBlur="{{ sunday.setHeadcount }}" onKeyDown="{{ sunday.hcKey }}" placeholder="—" style="width:100%;font-family:'Fraunces',serif;font-size:38px;font-weight:600;color:#2c2233;background:#fff;border:1.5px solid #e7dcc9;border-radius:12px;padding:8px 16px;outline:none;text-align:center">
               <div style="margin-top:12px;padding:11px 13px;background:#f6f1ea;border-radius:10px;font-size:12.5px;color:#5f5366">
                 Marked present: <b>{{ sunday.markedCount }}</b> members + <b>{{ sunday.guestCount }}</b> guests = <b>{{ sunday.suggested }}</b>
                 <button onClick="{{ sunday.useSuggested }}" style="{{ ui.btnMini }};margin-top:8px">Set headcount = {{ sunday.suggested }}</button>
@@ -228,7 +241,7 @@
                   <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.name }}</div><div style="font-size:11.5px;color:#928697">{{ m.statusLabel }}</div></div>
                   <sc-if value="{{ m.present }}" hint-placeholder-val="{{ true }}">
                     <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#5f5366">min
-                      <input type="number" min="0" value="{{ m.minutes }}" onBlur="{{ m.onMinutes }}" onKeyDown="{{ m.minKey }}" style="width:62px;text-align:center;font-size:13px;background:#fff;border:1.5px solid #e7dcc9;border-radius:8px;padding:6px 8px;outline:none">
+                      <input type="number" min="0" value="{{ m.minutes }}" onInput="{{ m.onMinutesType }}" onBlur="{{ m.onMinutes }}" onKeyDown="{{ m.minKey }}" style="width:62px;text-align:center;font-size:13px;background:#fff;border:1.5px solid #e7dcc9;border-radius:8px;padding:6px 8px;outline:none">
                     </label>
                   </sc-if>
                 </div>
@@ -385,15 +398,16 @@
 
       <!-- ---------- REPORTS ---------- -->
       <sc-if value="{{ isReports }}" hint-placeholder-val="{{ false }}">
-        <p style="{{ ui.intro }}" data-noprint>Generate a clean report and take it with you. <b>Download CSV</b> opens in Excel or Google Sheets; <b>Print / Save PDF</b> gives you a printable sheet (use your browser's "Save as PDF").</p>
-        <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px" data-noprint>
-          <sc-for list="{{ reports.tabs }}" as="t" hint-placeholder-count="4">
+        <p style="{{ ui.intro }}" data-noprint><b>Download full workbook</b> gives you one Excel file with every sheet — roster, attendance grid, durations, services, guests, first timers, follow-ups, households, giving and pastor summary — with all columns, exactly like the database you sent. <b>CSV</b> exports just the sheet shown; <b>Print</b> saves it as PDF.</p>
+        <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:12px" data-noprint>
+          <button onClick="{{ reports.onWorkbook }}" style="{{ ui.btn }}">⭳ Download full workbook (.xlsx)</button>
+          <button onClick="{{ reports.onCSV }}" style="{{ ui.btnGhost }}">⭳ This sheet as CSV</button>
+          <button onClick="{{ reports.onPrint }}" style="{{ ui.btnGhost }}">⎙ Print / Save PDF</button>
+        </div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px" data-noprint>
+          <sc-for list="{{ reports.tabs }}" as="t" hint-placeholder-count="8">
             <button onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
           </sc-for>
-          <div style="margin-left:auto;display:flex;gap:9px">
-            <button onClick="{{ reports.onCSV }}" style="{{ ui.btnGhost }}">⭳ Download CSV</button>
-            <button onClick="{{ reports.onPrint }}" style="{{ ui.btn }}">⎙ Print / Save PDF</button>
-          </div>
         </div>
         <div class="report-sheet" style="{{ ui.panel }}">
           <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;border-bottom:2px solid #e7dcc9;padding-bottom:14px;margin-bottom:6px">
@@ -404,6 +418,9 @@
             </div>
             <div style="text-align:right;font-size:12px;color:#928697">{{ reports.count }}<br>Generated {{ todayLabel }}</div>
           </div>
+          <sc-if value="{{ reports.hasTrunc }}" hint-placeholder-val="{{ false }}">
+            <div data-noprint style="font-size:12px;color:#a47d1f;background:#fdf6e6;border-radius:8px;padding:8px 11px;margin:10px 0 2px">{{ reports.truncNote }}</div>
+          </sc-if>
           <div style="overflow:auto">
             <table style="{{ ui.table }}">
               <thead><tr>
@@ -490,13 +507,30 @@
 
       <!-- ---------- TEAM ---------- -->
       <sc-if value="{{ isTeam }}" hint-placeholder-val="{{ false }}">
-        <p style="{{ ui.intro }}">Who can access the platform and what they can do. <b>Admin</b> — full access incl. delete &amp; managing the team. <b>Editor</b> — add, edit and record, but can't delete. <b>Viewer</b> — read-only. Add people in the Firebase console (Authentication → Users); they appear here after their first sign-in, then set their role.</p>
+        <p style="{{ ui.intro }}">Who can access the platform and what they can do. <b>Admin</b> — full access incl. delete &amp; managing the team. <b>Editor</b> — add, edit and record, but can't delete. <b>Viewer</b> — read-only.</p>
+        <div style="{{ ui.panelGold }};margin-bottom:16px">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#a47d1f;font-weight:700;margin-bottom:5px">Authorise someone</div>
+          <div style="{{ ui.muted }};margin-bottom:12px">Enter their email and role <b>now</b> — even before they first sign in. They get that role the moment they log in, so nobody lands as a viewer by mistake. (They still need a login created in Firebase ▸ Authentication ▸ Users.)</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input type="email" value="{{ team.inviteEmail }}" onInput="{{ team.onInviteEmail }}" onKeyDown="{{ team.onInviteKey }}" placeholder="person@email.com" style="{{ ui.input }};flex:1;min-width:220px">
+            <select value="{{ team.inviteRole }}" onChange="{{ team.onInviteRole }}" style="{{ ui.select }}"><sc-for list="{{ team.roleOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select>
+            <button onClick="{{ team.onInvite }}" style="{{ ui.btn }}">Grant access</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;font-size:13px;color:#5f5366">
+          <span>Signed in as <b>{{ team.myEmail }}</b> · role <b>{{ team.myRole }}</b></span>
+          <button onClick="{{ team.onRefresh }}" style="{{ ui.btnGhost }}">↻ Refresh my access</button>
+        </div>
         <sc-if value="{{ team.hasUsers }}" hint-placeholder-val="{{ true }}">
           <div style="{{ ui.tblWrap }}">
-            <table style="{{ ui.table }}"><thead><tr><th style="{{ ui.th }}">Email</th><th style="{{ ui.th }}">Role</th></tr></thead>
+            <table style="{{ ui.table }}"><thead><tr><th style="{{ ui.th }}">Email</th><th style="{{ ui.th }}">Role</th><th style="{{ ui.th }}"></th></tr></thead>
               <tbody>
                 <sc-for list="{{ team.rows }}" as="u" hint-placeholder-count="3">
-                  <tr style="border-bottom:1px solid #f1e9da"><td style="{{ ui.tdName }}">{{ u.email }}</td><td style="{{ ui.td }}"><select value="{{ u.role }}" onChange="{{ u.onRole }}" style="{{ ui.select }}"><sc-for list="{{ u.roleOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select></td></tr>
+                  <tr style="border-bottom:1px solid #f1e9da">
+                    <td style="{{ ui.tdName }}">{{ u.email }} <span style="font-size:10px;font-weight:700;color:#a47d1f;text-transform:uppercase">{{ u.youTag }}</span></td>
+                    <td style="{{ ui.td }}"><select value="{{ u.role }}" onChange="{{ u.onRole }}" style="{{ ui.select }}"><sc-for list="{{ u.roleOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select></td>
+                    <td style="{{ ui.td }}"><b style="color:#c2683f;cursor:pointer" onClick="{{ u.onRemove }}">✕</b></td>
+                  </tr>
                 </sc-for>
               </tbody>
             </table>
@@ -628,12 +662,13 @@ class Component extends DCLogic {
     ready: false, mode: 'local', snap: null, screen: 'dashboard',
     modal: null, memFilter: 'All', memSearch: '', regYear: new Date().getFullYear(), regSearch: '',
     svcDate: null, sundaySearch: '', guestInput: '', form: {}, formErr: '', toast: '', toastAt: 0,
-    needsLogin: false, loginEmail: '', loginPass: '', loginErr: '', reportType: 'attendance',
-    role: 'admin', userEmail: '', noteText: '', noteType: 'call', giveDate: null, giveAmount: '', giveCategory: 'Offering'
+    needsLogin: false, loginEmail: '', loginPass: '', loginErr: '', reportType: 'roster',
+    role: 'admin', userEmail: '', noteText: '', noteType: 'call', giveDate: null, giveAmount: '', giveCategory: 'Offering',
+    minEdits: {}, hcEdit: null, bootError: '', saveError: '', saving: 0, inviteEmail: '', inviteRole: 'editor'
   };
 
   async componentDidMount() {
-    const mod = await import('./kre-db.js?v=4');
+    const mod = await import('./kre-db.js?v=6');
     this._mod = mod;
     this._STATUSES = mod.STATUSES;
     const cfg = (typeof window !== 'undefined') && window.KRE_FIREBASE_CONFIG;
@@ -655,13 +690,20 @@ class Component extends DCLogic {
   async _boot(forceLocal) {
     let db;
     try {
-      // Never let startup hang: if the DB doesn't come up within 12s, fall back to local data.
       db = await Promise.race([
         this._mod.createDB({ forceLocal }),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('boot-timeout')), 12000))
+        new Promise((_, rej) => setTimeout(() => rej(new Error('boot-timeout')), 15000))
       ]);
     } catch (e) {
-      console.warn('[KRE] boot slow/failed — loading local data:', e);
+      // If they are signed in, do NOT quietly load demo data — their edits would go
+      // to the browser instead of Firestore and disappear on refresh. Show the error.
+      let signedIn = false;
+      try { signedIn = !!(window.firebase && window.firebase.auth().currentUser); } catch (_) {}
+      if (signedIn && !forceLocal) {
+        this.setState({ ready:false, needsLogin:true, bootError:'Could not reach the church database ('+((e&&e.message)||e)+'). Your data was not loaded — check your connection and try again rather than entering data now.' });
+        return;
+      }
+      console.warn('[KRE] boot failed — loading local data:', e);
       db = await this._mod.createDB({ forceLocal: true });
     }
     this._db = db;
@@ -731,22 +773,52 @@ class Component extends DCLogic {
   go(screen){ this.setState({ screen, modal:null }); if(typeof window!=='undefined')window.scrollTo(0,0); }
   toast(msg){ this.setState({ toast:msg, toastAt:Date.now() }); const t=Date.now(); setTimeout(()=>{ if(this.state.toastAt===t)this.setState({toast:''}); },1700); }
 
+  /* Debounced commit — number fields save shortly after you stop typing, so a
+   * value is never lost just because the field wasn't blurred. */
+  _debounce(key, fn, ms){
+    this._timers = this._timers || {};
+    if (this._timers[key]) clearTimeout(this._timers[key]);
+    this._timers[key] = setTimeout(() => { delete this._timers[key]; fn(); }, ms || 600);
+  }
+
   /* ---------------- permissions ---------------- */
   _canWrite(){ if(this.state.role==='viewer'){ this.toast('View-only access — ask an admin'); return false; } return true; }
   _canDelete(){ if(this.state.role!=='admin'){ this.toast('Only an admin can delete'); return false; } return true; }
 
+  /* Every write goes through here. A failed write used to be swallowed, so the
+   * screen showed data that never reached Firestore — it "vanished" on refresh.
+   * Now failures raise a persistent banner naming the cause. */
+  async _w(label, fn){
+    this.setState({ saving:this.state.saving+1 });
+    try {
+      await fn();
+      this.setState({ saving:Math.max(0,this.state.saving-1), saveError:'' });
+      return true;
+    } catch(e){
+      const code=(e&&e.code)||String(e);
+      const msg = code.indexOf('permission-denied')>=0
+        ? label+' was rejected: publish the updated firestore.rules in the Firebase console.'
+        : label+' failed to save ('+code+'). Check your connection — it was NOT saved.';
+      console.error('[KRE] write failed:', label, e);
+      this.setState({ saving:Math.max(0,this.state.saving-1), saveError:msg });
+      return false;
+    }
+  }
+
   /* ---------------- mutations ---------------- */
-  async setAttendance(id,date,patch){ if(!this._canWrite())return; await this._db.setAttendance(id,date,patch); }
+  async setAttendance(id,date,patch){ if(!this._canWrite())return; await this._w('Attendance',()=>this._db.setAttendance(id,date,patch)); }
   async togglePresent(id,date){ const a=(this._idx().attByMember[id]||{})[date]; await this.setAttendance(id,date,{present:!(a&&a.present)}); }
   async setMinutes(id,date,val){ await this.setAttendance(id,date,{minutes:val}); }
-  async setHeadcount(date,val){ if(!this._canWrite())return; await this._db.setService(date,{headcount:val}); }
-  async setGuests(date,arr){ if(!this._canWrite())return; await this._db.setService(date,{guestRoll:arr}); }
-  async _addNote(memberId){ if(!this._canWrite())return; const text=(this.state.noteText||'').trim(); if(!text)return; await this._db.addNote({memberId,type:this.state.noteType,text,by:this.state.userEmail}); this.setState({noteText:''}); this.toast('Follow-up logged'); }
-  async _deleteNote(id){ if(!this._canWrite())return; await this._db.deleteNote(id); this.toast('Note removed'); }
-  async _addGiving(){ if(!this._canWrite())return; const amt=+this.state.giveAmount; if(!(amt>0)){ this.toast('Enter an amount'); return; } await this._db.addGiving({date:this.state.giveDate,category:this.state.giveCategory,amount:amt}); this.setState({giveAmount:''}); this.toast('Giving recorded'); }
-  async _deleteGiving(id){ if(!this._canDelete())return; await this._db.deleteGiving(id); this.toast('Entry removed'); }
-  async _setMemberHousehold(memberId,householdId){ if(!this._canWrite())return; await this._db.updateMember(memberId,{householdId:householdId||null}); this.toast('Household updated'); }
-  async _setUserRole(uid,role){ await this._db.setUserRole(uid,role); this.toast('Role updated'); }
+  async setHeadcount(date,val,quiet){ if(!this._canWrite())return; const ok=await this._w('Headcount',()=>this._db.setService(date,{headcount:val})); if(ok&&!quiet) this.toast('Headcount saved'); }
+  async setGuests(date,arr){ if(!this._canWrite())return; await this._w('Guest list',()=>this._db.setService(date,{guestRoll:arr})); }
+  async _addNote(memberId){ if(!this._canWrite())return; const text=(this.state.noteText||'').trim(); if(!text)return; if(await this._w('Follow-up note',()=>this._db.addNote({memberId,type:this.state.noteType,text,by:this.state.userEmail}))){ this.setState({noteText:''}); this.toast('Follow-up logged'); } }
+  async _deleteNote(id){ if(!this._canWrite())return; if(await this._w('Note delete',()=>this._db.deleteNote(id))) this.toast('Note removed'); }
+  async _addGiving(){ if(!this._canWrite())return; const amt=+this.state.giveAmount; if(!(amt>0)){ this.toast('Enter an amount'); return; } if(await this._w('Giving entry',()=>this._db.addGiving({date:this.state.giveDate,category:this.state.giveCategory,amount:amt}))){ this.setState({giveAmount:''}); this.toast('Giving recorded'); } }
+  async _deleteGiving(id){ if(!this._canDelete())return; if(await this._w('Giving delete',()=>this._db.deleteGiving(id))) this.toast('Entry removed'); }
+  async _setMemberHousehold(memberId,householdId){ if(!this._canWrite())return; if(await this._w('Household',()=>this._db.updateMember(memberId,{householdId:householdId||null}))) this.toast('Household updated'); }
+  async _setUserRole(id,role){ if(await this._w('Role change',()=>this._db.setUserRole(id,role))) this.toast('Role updated'); }
+  async _removeUser(id){ if(!this._canDelete())return; if(await this._w('Remove user',()=>this._db.removeUser(id))) this.toast('Access removed'); }
+  async _inviteUser(){ const em=(this.state.inviteEmail||'').trim().toLowerCase(); if(!em||em.indexOf('@')<0){ this.toast('Enter a valid email'); return; } if(await this._w('Authorise user',()=>this._db.setUserRole(em,this.state.inviteRole))){ this.setState({inviteEmail:''}); this.toast('Access granted to '+em); } }
 
   /* ---------------- ui style dictionary ---------------- */
   ui() {
@@ -807,6 +879,7 @@ class Component extends DCLogic {
       },
       canSignOut: this.state.mode==='firebase',
       onSignOut: ()=>this._signOut(),
+      hasBootError: !!this.state.bootError, bootError: this.state.bootError,
     };
     if (!this.state.ready) return Object.assign(base, { toastShow:false, modalOpen:false });
 
@@ -837,6 +910,11 @@ class Component extends DCLogic {
       isHouseholds:S.screen==='households', isGiving:S.screen==='giving', isTeam:S.screen==='team',
       canEdit, canAdmin, roleLabel: S.role.charAt(0).toUpperCase()+S.role.slice(1),
       toastShow: !!S.toast, toast: S.toast,
+      hasSaveError: !!S.saveError, saveError: S.saveError,
+      onDismissError: ()=>this.setState({saveError:''}),
+      isDemoMode: S.mode==='local',
+      onRetryLive: ()=>{ this.setState({ready:false,saveError:''}); this._boot(false); },
+      savingNow: S.saving>0,
     });
 
     if (base.isDashboard) base.dash = this._vmDashboard(I);
@@ -897,13 +975,19 @@ class Component extends DCLogic {
     if(search) mem = mem.filter(m=>m.name.toLowerCase().includes(search));
     const roll = mem.map(m=>{
       const a = atd[m.id]; const present = !!(a&&a.present);
+      const ekey = m.id+'|'+date;
+      const draft = this.state.minEdits ? this.state.minEdits[ekey] : undefined;
+      const stored = (a&&a.minutes!=null)?a.minutes:'';
       return {
-        name:m.name, statusLabel:m.status, present, minutes:(a&&a.minutes!=null)?a.minutes:'',
+        name:m.name, statusLabel:m.status, present, minutes: draft!==undefined ? draft : stored,
+        onMinutesType:(e)=>{ const v=e.target.value;
+          this.setState({ minEdits:Object.assign({}, this.state.minEdits, {[ekey]:v}) });
+          this.setMinutes(m.id,date,v); },
         rowStyle:'display:flex;align-items:center;gap:12px;padding:9px 4px;border-bottom:1px solid #f6efe2'+(present?';background:#f3f7f4':''),
         toggleStyle:'width:30px;height:30px;flex:none;border-radius:8px;border:1.5px solid '+(present?'#5f7355':'#e0d6c4')+';background:'+(present?'#5f7355':'#fff')+';color:'+(present?'#fff':'#c9bda9')+';font-size:15px;cursor:pointer;display:grid;place-items:center',
         toggleGlyph: present?'✓':'',
         onToggle:()=>this.togglePresent(m.id,date),
-        onMinutes:(e)=>this.setMinutes(m.id,date,e.target.value),
+        onMinutes:(e)=>{ const v=e.target.value; const me=Object.assign({},this.state.minEdits); delete me[ekey]; this.setState({minEdits:me}); this.setMinutes(m.id,date,v); },
         minKey:(e)=>{ if(e.key==='Enter')e.target.blur(); },
       };
     });
@@ -912,13 +996,14 @@ class Component extends DCLogic {
     return {
       dateISO:date, dateLabel:this._fmtFull(date),
       statusLine: (svc.headcount!=null||markedCount>0||guests.length>0)?'Recording in progress':'New service — nothing recorded yet',
-      headcount: svc.headcount!=null?svc.headcount:'',
+      headcount: (this.state.hcEdit&&this.state.hcEdit.k===date) ? this.state.hcEdit.v : (svc.headcount!=null?svc.headcount:''),
+      hcType:(e)=>{ const v=e.target.value; this.setState({hcEdit:{k:date,v}}); this.setHeadcount(date,v,true); },
       markedCount, guestCount:guests.length, suggested,
       roll, guests:guestVms, hasGuests:guests.length>0, noGuests:guests.length===0,
       search:this.state.sundaySearch, guestInput:this.state.guestInput,
       prev:()=>this._shiftSunday(-7), next:()=>this._shiftSunday(7),
       pick:(e)=>{ if(e.target.value)this.setState({svcDate:e.target.value}); },
-      setHeadcount:(e)=>this.setHeadcount(date,e.target.value),
+      setHeadcount:(e)=>{ const v=e.target.value; this.setState({hcEdit:null}); this.setHeadcount(date,v); },
       hcKey:(e)=>{ if(e.key==='Enter')e.target.blur(); },
       useSuggested:()=>{ this.setHeadcount(date,suggested); this.toast('Headcount set to '+suggested); },
       searchType:(e)=>this.setState({sundaySearch:e.target.value}),
@@ -1028,35 +1113,127 @@ class Component extends DCLogic {
     return { cards, onAdd:()=>this.openAddPastor() };
   }
 
+  /* ---------- report builders (shared by screen + workbook export) ---------- */
+  _reportDefs(I){
+    const pname=id=>(I.pastorsById[id]&&I.pastorsById[id].name)||'';
+    const hname=id=>(I.householdsById[id]&&I.householdsById[id].name)||'';
+    const total=I.dates.length;
+    const dates=I.dates;
+    const members=I.snap.members.slice().sort((a,b)=>a.name.localeCompare(b.name));
+    const firstSeen=(id)=>{ const rec=I.attByMember[id]||{}; let f=null; dates.forEach(d=>{ if(rec[d]&&rec[d].present&&!f)f=d; }); return f; };
+    const totalMinutes=(id)=>{ const rec=I.attByMember[id]||{}; let t=0; dates.forEach(d=>{ if(rec[d]&&rec[d].minutes>0)t+=rec[d].minutes; }); return t; };
+    const recorded=(id)=>{ const rec=I.attByMember[id]||{}; let t=0; dates.forEach(d=>{ const a=rec[d]; if(a&&(a.present===true||a.present===false))t++; }); return t; };
+    const notesCount=(id)=>((I.notesByMember[id]||[]).length);
+
+    const defs=[];
+
+    defs.push({ key:'roster', label:'Member Roster (full)', title:'Member Roster — Full Detail',
+      subtitle:'Every member with all recorded fields and attendance analytics',
+      columns:['S/N','Member Name','Phone Number','Email','Current Location','Member Status','Pastor Assigned','Household','Services Present','Services Recorded','Total Services','Attendance Rate %','Avg Minutes','Total Minutes','First Attendance','Last Attendance','Services Since Seen','Follow-ups Logged'],
+      rows:members.map((m,i)=>[i+1,m.name,m.phone||'',m.email||'',m.location||'',m.status,pname(m.pastorId),hname(m.householdId),
+        this._servicesPresent(m.id),recorded(m.id),total,Math.round(this._rate(m.id)*100),Math.round(this._avgDur(m.id)),totalMinutes(m.id),
+        firstSeen(m.id)||'',this._lastSeen(m.id)||'',this._weeksSince(m.id)>=99?'never seen':this._weeksSince(m.id),notesCount(m.id)]) });
+
+    defs.push({ key:'register', label:'Attendance Register (grid)', title:'Attendance Register',
+      subtitle:'Member × every recorded service. 1 = present, 0 = absent, blank = not recorded',
+      columns:['Member Name'].concat(dates),
+      rows:members.map(m=>{ const rec=I.attByMember[m.id]||{};
+        return [m.name].concat(dates.map(d=>{ const a=rec[d]; return a?(a.present?1:0):''; })); }) });
+
+    defs.push({ key:'duration', label:'Duration in Service', title:'Duration in Service (minutes)',
+      subtitle:'Minutes each member stayed, per service',
+      columns:['Member Name'].concat(dates),
+      rows:members.map(m=>{ const rec=I.attByMember[m.id]||{};
+        return [m.name].concat(dates.map(d=>{ const a=rec[d]; return (a&&a.minutes!=null)?a.minutes:''; })); }) });
+
+    defs.push({ key:'services', label:'Service Summary', title:'Service Summary',
+      subtitle:'Overall headcount vs. members marked, per service',
+      columns:['Service Date','Overall Headcount','Members Marked Present','Members Marked Absent','Guests Recorded','Total Minutes Logged'],
+      rows:I.snap.services.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(s=>{
+        const atd=I.attByDate[s.date]||{}; let pr=0,ab=0,mins=0;
+        Object.values(atd).forEach(a=>{ if(a.present){pr++; if(a.minutes>0)mins+=a.minutes;} else ab++; });
+        return [s.date,s.headcount==null?'':s.headcount,pr,ab,(s.guestRoll||[]).length,mins]; }) });
+
+    const guestRows=[];
+    I.snap.services.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(s=>{
+      (s.guestRoll||[]).forEach(g=>guestRows.push([s.date,g])); });
+    defs.push({ key:'guests', label:'Guests & One-Timers', title:'Guests & One-Timers',
+      subtitle:'People who attended but are not on the member roll',
+      columns:['Service Date','Guest Name'], rows:guestRows });
+
+    defs.push({ key:'firsttimers', label:'First Timers', title:'First Timers',
+      subtitle:'Visitors, who invited them, and whether they returned',
+      columns:['Name','Invited By','Contact','First Visit','Times Seen','All Visit Dates','Returned','Became Member'],
+      rows:I.snap.firstTimers.slice().sort((a,b)=>(a.firstVisit||'9').localeCompare(b.firstVisit||'9')).map(f=>[
+        f.name,f.invitedBy||'',f.contacts||'',f.firstVisit||'',(f.visits||[]).length,(f.visits||[]).join(', '),
+        this._ftReturned(f,I)?'Yes':'No', f.linkedMemberId?((I.membersById[f.linkedMemberId]&&I.membersById[f.linkedMemberId].name)||'Yes'):'']) });
+
+    defs.push({ key:'followup', label:'Follow-Up Priority', title:'Follow-Up Priority List',
+      subtitle:'Members ranked by how overdue a visit is',
+      columns:['Member Name','Status','Pastor Assigned','Phone Number','Email','Last Attendance','Services Since Seen','Attendance Rate %','Follow-ups Logged'],
+      rows:I.snap.members.map(m=>({m,ws:this._weeksSince(m.id),sp:this._servicesPresent(m.id)})).sort((a,b)=>b.ws-a.ws).map(({m,ws,sp})=>[
+        m.name,m.status,pname(m.pastorId),m.phone||'',m.email||'',this._lastSeen(m.id)||'',
+        sp===0?'never seen':ws,Math.round(this._rate(m.id)*100),notesCount(m.id)]) });
+
+    const noteRows=(I.snap.notes||[]).slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).map(n=>[
+      n.date||'',(I.membersById[n.memberId]&&I.membersById[n.memberId].name)||n.memberId,n.type||'note',n.text||'',n.by||'']);
+    defs.push({ key:'notes', label:'Follow-Up Log', title:'Pastoral Follow-Up Log',
+      subtitle:'Every call, visit, message and note recorded',
+      columns:['Date','Member','Type','Note','Logged By'], rows:noteRows });
+
+    const hhGroups={}; I.snap.members.forEach(m=>{ if(m.householdId)(hhGroups[m.householdId]=hhGroups[m.householdId]||[]).push(m.name); });
+    defs.push({ key:'households', label:'Households', title:'Households',
+      subtitle:'Family groupings and their members',
+      columns:['Household','Members','Member Names'],
+      rows:(I.snap.households||[]).slice().sort((a,b)=>a.name.localeCompare(b.name)).map(h=>[
+        h.name,(hhGroups[h.id]||[]).length,(hhGroups[h.id]||[]).sort().join(', ')]) });
+
+    defs.push({ key:'giving', label:'Giving', title:'Giving & Offerings',
+      subtitle:'Every recorded contribution',
+      columns:['Date','Category','Amount','Member','Note'],
+      rows:(I.snap.giving||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(g=>[
+        g.date||'',g.category||'',+g.amount||0,(I.membersById[g.memberId]&&I.membersById[g.memberId].name)||'',g.note||'']) });
+
+    const pGroups={}; I.snap.members.forEach(m=>{ if(m.pastorId)(pGroups[m.pastorId]=pGroups[m.pastorId]||[]).push(m); });
+    defs.push({ key:'pastors', label:'Pastor Summary', title:'Pastor Engagement Summary',
+      subtitle:'How each pastor’s flock is engaging',
+      columns:['Pastor','Members Assigned','Showing Up','Needs Follow-Up','Avg Attendance Rate %'],
+      rows:(I.snap.pastors||[]).slice().sort((a,b)=>a.name.localeCompare(b.name)).map(p=>{
+        const list=pGroups[p.id]||[];
+        const showing=list.filter(m=>this._weeksSince(m.id)<3&&this._servicesPresent(m.id)>0).length;
+        const rate=list.length?Math.round(list.reduce((a,m)=>a+this._rate(m.id),0)/list.length*100):0;
+        return [p.name,list.length,showing,list.length-showing,rate]; }) });
+
+    return defs;
+  }
+
   /* ---------- reports vm ---------- */
   _vmReports(I){
-    const type=this.state.reportType;
-    const defs=[['attendance','Attendance Summary'],['roster','Member Roster'],['firsttimers','First Timers'],['followup','Follow-Up List']];
-    const tabs=defs.map(([k,label])=>({ label, onClick:()=>this.setState({reportType:k}),
-      style:'font-size:13px;font-weight:600;padding:9px 15px;border-radius:10px;border:1.5px solid '+(type===k?'#4a1d6e':'#e7dcc9')+';background:'+(type===k?'#4a1d6e':'#fffdfa')+';color:'+(type===k?'#fff':'#5f5366')+';cursor:pointer' }));
-    let columns=[], rows=[], title='', subtitle='';
-    const pname=id=>(I.pastorsById[id]&&I.pastorsById[id].name)||'';
-    if(type==='attendance'){
-      title='Attendance Summary'; subtitle='Every recorded service — headcount, members present and guests';
-      columns=['Sunday','Headcount','Members Present','Guests'];
-      rows=I.snap.services.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(s=>{ const atd=I.attByDate[s.date]||{}; let pr=0; Object.values(atd).forEach(a=>{ if(a.present)pr++; }); return [this._fmtFull(s.date), s.headcount==null?'—':s.headcount, pr, (s.guestRoll||[]).length]; });
-    } else if(type==='roster'){
-      title='Member Roster'; subtitle='All members with contact details and attendance';
-      columns=['Name','Status','Pastor','Phone','Location','Services','Rate','Last Seen'];
-      const total=I.dates.length;
-      rows=I.snap.members.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(m=>[m.name,m.status,pname(m.pastorId),m.phone||'',m.location||'',this._servicesPresent(m.id)+'/'+total,Math.round(this._rate(m.id)*100)+'%',this._fmtFull(this._lastSeen(m.id))]);
-    } else if(type==='firsttimers'){
-      title='First Timers'; subtitle='Visitors, who invited them, and whether they returned';
-      columns=['Name','Invited By','Contact','First Visit','Times Seen','Returned'];
-      rows=I.snap.firstTimers.slice().sort((a,b)=>(a.firstVisit||'9').localeCompare(b.firstVisit||'9')).map(f=>[f.name,f.invitedBy||'',f.contacts||'',this._fmtFull(f.firstVisit),(f.visits||[]).length,this._ftReturned(f,I)?'Yes':'No']);
-    } else {
-      title='Follow-Up List'; subtitle='Members ranked by how overdue a visit is';
-      columns=['Name','Status','Pastor','Last Seen','Services Since'];
-      rows=I.snap.members.map(m=>({m,ws:this._weeksSince(m.id),sp:this._servicesPresent(m.id)})).sort((a,b)=>b.ws-a.ws).map(({m,ws,sp})=>[m.name,m.status,pname(m.pastorId),this._fmtFull(this._lastSeen(m.id)),sp===0?'never seen':ws]);
-    }
-    const bodyRows=rows.map(r=>({ cells:r.map(c=>({ v:(c==null?'':String(c)) })) }));
-    return { tabs, title, subtitle, columns, rows:bodyRows, count:rows.length+' rows',
-      onCSV:()=>this._downloadCSV(title,columns,rows), onPrint:()=>this._print() };
+    const defs=this._reportDefs(I);
+    const active=defs.find(d=>d.key===this.state.reportType)||defs[0];
+    const tabs=defs.map(d=>({ label:d.label, onClick:()=>this.setState({reportType:d.key}),
+      style:'font-size:12.5px;font-weight:600;padding:8px 13px;border-radius:9px;border:1.5px solid '+(active.key===d.key?'#4a1d6e':'#e7dcc9')+';background:'+(active.key===d.key?'#4a1d6e':'#fffdfa')+';color:'+(active.key===d.key?'#fff':'#5f5366')+';cursor:pointer' }));
+    // Wide grids are truncated on screen only; the download always has every column.
+    const wide=active.columns.length>14;
+    const shownCols=wide?active.columns.slice(0,14):active.columns;
+    const bodyRows=active.rows.slice(0,400).map(r=>({ cells:(wide?r.slice(0,14):r).map(c=>({ v:(c==null?'':String(c)) })) }));
+    return { tabs, title:active.title, subtitle:active.subtitle, columns:shownCols, rows:bodyRows,
+      count:active.rows.length+' rows',
+      truncNote: wide?('Showing first 14 of '+active.columns.length+' columns — the download has all of them.'):(active.rows.length>400?'Showing first 400 rows — the download has all '+active.rows.length+'.':''),
+      hasTrunc: wide||active.rows.length>400,
+      onCSV:()=>this._downloadCSV(active.title,active.columns,active.rows),
+      onWorkbook:()=>this._downloadWorkbook(I),
+      onPrint:()=>this._print() };
+  }
+
+  async _downloadWorkbook(I){
+    try{
+      const mod=await import('./kre-xlsx.js?v=1');
+      const defs=this._reportDefs(I);
+      const sheets=defs.map(d=>({ name:d.label.replace(/\s*\(.*\)/,''), rows:[d.columns].concat(d.rows) }));
+      mod.downloadBlob(mod.buildXlsx(sheets),'KRE Church Database '+this._todayISO()+'.xlsx');
+      this.toast('Workbook downloaded — '+sheets.length+' sheets');
+    }catch(e){ console.error(e); this.setState({saveError:'Could not build the workbook ('+((e&&e.message)||e)+').'}); }
   }
   _downloadCSV(title,columns,rows){
     const esc=v=>{ const s=(v==null?'':String(v)); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
@@ -1102,11 +1279,22 @@ class Component extends DCLogic {
   /* ---------- team vm ---------- */
   _vmTeam(I){
     const roles=['admin','editor','viewer'];
-    const rows=(I.snap.users||[]).slice().sort((a,b)=>(a.email||'').localeCompare(b.email||'')).map(u=>({
-      email:u.email||u.id, role:u.role||'viewer', roleOpts:roles.map(r=>({value:r,label:r.charAt(0).toUpperCase()+r.slice(1)})),
-      onRole:(e)=>this._setUserRole(u.id,e.target.value)
+    const roleOpts=roles.map(r=>({value:r,label:r.charAt(0).toUpperCase()+r.slice(1)}));
+    const me=(this.state.userEmail||'').toLowerCase();
+    const rows=(I.snap.users||[]).slice().sort((a,b)=>(a.email||a.id||'').localeCompare(b.email||b.id||'')).map(u=>({
+      email:u.email||u.id, role:u.role||'viewer', roleOpts,
+      isMe:(u.email||u.id||'').toLowerCase()===me,
+      youTag:(u.email||u.id||'').toLowerCase()===me?'you':'',
+      onRole:(e)=>this._setUserRole(u.id,e.target.value),
+      onRemove:()=>this._removeUser(u.id)
     }));
-    return { rows, hasUsers:rows.length>0, noUsers:rows.length===0 };
+    return { rows, hasUsers:rows.length>0, noUsers:rows.length===0,
+      inviteEmail:this.state.inviteEmail, inviteRole:this.state.inviteRole, roleOpts,
+      onInviteEmail:(e)=>this.setState({inviteEmail:e.target.value}),
+      onInviteRole:(e)=>this.setState({inviteRole:e.target.value}),
+      onInviteKey:(e)=>{ if(e.key==='Enter')this._inviteUser(); },
+      onInvite:()=>this._inviteUser(), myEmail:this.state.userEmail||'—', myRole:this.state.role,
+      onRefresh:()=>{ this.setState({ready:false}); this._boot(false); } };
   }
 
   /* ==================== MODALS ==================== */
@@ -1119,13 +1307,13 @@ class Component extends DCLogic {
   openEditPastor(id){ const p=this._idx().pastorsById[id]; this.setState({ modal:{ type:'pastorForm', id }, form:{ name:p.name }, formErr:'' }); }
   openAddHousehold(){ this.setState({ modal:{ type:'householdForm', id:null }, form:{ name:'' }, formErr:'' }); }
   openEditHousehold(id){ const h=this._idx().householdsById[id]; this.setState({ modal:{ type:'householdForm', id }, form:{ name:h.name }, formErr:'' }); }
-  async _saveHouseholdForm(){ if(!this._canWrite())return; const name=(this.state.form.name||'').trim(); if(!name){ this.setState({formErr:'Name cannot be empty.'}); return; } if(this.state.modal.id) await this._db.updateHousehold(this.state.modal.id,{name}); else await this._db.addHousehold(name); this.closeModal(); this.setState({screen:'households'}); this.toast('Saved'); }
-  async _deleteHousehold(){ if(!this._canDelete())return; const id=this.state.modal.id; if(!id)return; await this._db.deleteHousehold(id); this.closeModal(); this.toast('Household removed'); }
+  async _saveHouseholdForm(){ if(!this._canWrite())return; const name=(this.state.form.name||'').trim(); if(!name){ this.setState({formErr:'Name cannot be empty.'}); return; } if(this.state.modal.id){ if(!await this._w('Household',()=>this._db.updateHousehold(this.state.modal.id,{name})))return; } else { if(!await this._w('New household',()=>this._db.addHousehold(name)))return; } this.closeModal(); this.setState({screen:'households'}); this.toast('Saved'); }
+  async _deleteHousehold(){ if(!this._canDelete())return; const id=this.state.modal.id; if(!id)return; if(await this._w('Household delete',()=>this._db.deleteHousehold(id))){ this.closeModal(); this.toast('Household removed'); } }
   closeModal(){ this.setState({ modal:null, formErr:'' }); }
   _setForm(k,v){ this.setState({ form:Object.assign({},this.state.form,{[k]:v}) }); }
 
-  async _saveStatus(id,status){ if(!this._canWrite())return; await this._db.updateMember(id,{status}); this.toast('Status updated'); }
-  async _savePastor(id,pastorId){ if(!this._canWrite())return; await this._db.updateMember(id,{pastorId:pastorId||null}); this.toast('Pastor updated'); }
+  async _saveStatus(id,status){ if(!this._canWrite())return; if(await this._w('Status',()=>this._db.updateMember(id,{status}))) this.toast('Status updated'); }
+  async _savePastor(id,pastorId){ if(!this._canWrite())return; if(await this._w('Pastor assignment',()=>this._db.updateMember(id,{pastorId:pastorId||null}))) this.toast('Pastor updated'); }
   async _saveMemberForm(){
     if(!this._canWrite())return;
     const f=this.state.form; const name=(f.name||'').trim();
@@ -1133,27 +1321,27 @@ class Component extends DCLogic {
     const dup=this._idx().snap.members.find(m=>m.name.toLowerCase().replace(/[^a-z0-9]/g,'')===name.toLowerCase().replace(/[^a-z0-9]/g,'')&&m.id!==this.state.modal.id);
     if(dup){ this.setState({formErr:'Another member already has that name.'}); return; }
     const patch={ name, phone:(f.phone||'').trim()||null, email:(f.email||'').trim()||null, location:(f.location||'').trim()||null, status:f.status||'Growing', pastorId:f.pastorId||null, householdId:f.householdId||null };
-    if(this.state.modal.id){ await this._db.updateMember(this.state.modal.id,patch); this.setState({modal:{type:'profile',id:this.state.modal.id}}); this.toast('Saved'); }
-    else { await this._db.addMember(patch); this.closeModal(); this.setState({screen:'members'}); this.toast('Member added'); }
+    if(this.state.modal.id){ if(await this._w('Member',()=>this._db.updateMember(this.state.modal.id,patch))){ this.setState({modal:{type:'profile',id:this.state.modal.id}}); this.toast('Saved'); } }
+    else { if(await this._w('New member',()=>this._db.addMember(patch))){ this.closeModal(); this.setState({screen:'members'}); this.toast('Member added'); } }
   }
-  async _deleteMember(){ if(!this._canDelete())return; const id=this.state.modal.id; if(!id)return; await this._db.deleteMember(id); this.closeModal(); this.toast('Member removed'); }
-  async _deleteFirstTimer(){ if(!this._canWrite())return; const id=this.state.modal.id; if(!id)return; await this._db.deleteFirstTimer(id); this.closeModal(); this.setState({screen:'firsttimers'}); this.toast('First timer removed'); }
+  async _deleteMember(){ if(!this._canDelete())return; const id=this.state.modal.id; if(!id)return; if(await this._w('Member delete',()=>this._db.deleteMember(id))){ this.closeModal(); this.toast('Member removed'); } }
+  async _deleteFirstTimer(){ if(!this._canWrite())return; const id=this.state.modal.id; if(!id)return; if(await this._w('First timer delete',()=>this._db.deleteFirstTimer(id))){ this.closeModal(); this.setState({screen:'firsttimers'}); this.toast('First timer removed'); } }
   async _savePastorForm(){
     if(!this._canWrite())return;
     const name=(this.state.form.name||'').trim();
     if(!name){ this.setState({formErr:'Name cannot be empty.'}); return; }
-    if(this.state.modal.id) await this._db.updatePastor(this.state.modal.id,{name});
-    else await this._db.addPastor(name);
+    if(this.state.modal.id){ if(!await this._w('Pastor',()=>this._db.updatePastor(this.state.modal.id,{name})))return; }
+    else { if(!await this._w('New pastor',()=>this._db.addPastor(name)))return; }
     this.closeModal(); this.setState({screen:'pastors'}); this.toast('Saved');
   }
-  async _deletePastor(){ if(!this._canDelete())return; const id=this.state.modal.id; if(!id)return; await this._db.deletePastor(id); this.closeModal(); this.toast('Pastor removed — members unassigned'); }
+  async _deletePastor(){ if(!this._canDelete())return; const id=this.state.modal.id; if(!id)return; if(await this._w('Pastor delete',()=>this._db.deletePastor(id))){ this.closeModal(); this.toast('Pastor removed — members unassigned'); } }
   async _saveFtForm(){
     if(!this._canWrite())return;
     const f=this.state.form; const name=(f.name||'').trim();
     if(!name){ this.setState({formErr:'Name cannot be empty.'}); return; }
     const patch={ name, invitedBy:(f.invitedBy||'').trim()||null, contacts:(f.contacts||'').trim()||null, firstVisit:f.firstVisit||null };
-    if(this.state.modal.id){ await this._db.updateFirstTimer(this.state.modal.id,patch); this.toast('Saved'); }
-    else { await this._db.addFirstTimer(patch); this.toast('First timer added'); }
+    if(this.state.modal.id){ if(!await this._w('First timer',()=>this._db.updateFirstTimer(this.state.modal.id,patch)))return; this.toast('Saved'); }
+    else { if(!await this._w('New first timer',()=>this._db.addFirstTimer(patch)))return; this.toast('First timer added'); }
     this.closeModal(); this.setState({screen:'firsttimers'});
   }
 

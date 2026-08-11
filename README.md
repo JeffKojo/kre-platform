@@ -72,23 +72,45 @@ beyond) automatically; tapping a future cell just works.
 
 ---
 
-## Roles & access (new)
+## Reports & downloads
+
+**Download full workbook (.xlsx)** produces one Excel file with 11 sheets — every column, like the original database:
+
+| Sheet | Contents |
+|---|---|
+| Member Roster | S/N, name, phone, email, location, status, pastor, household, services present/recorded, rate %, avg + total minutes, first/last attendance, services since seen, follow-ups logged |
+| Attendance Register | member × every service (1 present / 0 absent / blank not recorded) |
+| Duration in Service | minutes stayed, per member per service |
+| Service Summary | headcount vs. members marked present/absent, guests, total minutes |
+| Guests & One-Timers | every guest per service |
+| First Timers | invited by, contact, first visit, all visit dates, returned, became member |
+| Follow-Up Priority | ranked by overdue, with phone + email for calling |
+| Follow-Up Log | every call/visit/message with who logged it |
+| Households | family groupings and members |
+| Giving | date, category, amount, member, note |
+| Pastor Summary | flock size, showing up, needs follow-up, avg rate |
+
+CSV exports the single sheet on screen; Print saves it as PDF. Wide sheets show the first 14 columns on screen — the download always contains all of them.
+
+## Roles & access
 
 Three roles, enforced by Firestore rules **and** the UI:
 - **Admin** — full access, including delete and managing the team.
 - **Editor** — add / edit / record attendance & giving, but cannot delete.
 - **Viewer** — read-only.
 
-The owner (set in `firebase-config`/`kre-db.js`/`firestore.rules` as `jeffnathan2@gmail.com`) is always admin — no manual bootstrap. Add other staff in **Firebase ▸ Authentication ▸ Users**; after their first sign-in they appear on the **Team** tab where an admin sets their role.
+Roles resolve by **email** (with backward compatibility for older uid-keyed records), and the owner (`jeffnathan2@gmail.com`, set in `kre-db.js` + `firestore.rules`) is always admin. On the **Team** tab an admin can **authorise someone by email before their first sign-in**, so nobody lands as a viewer by mistake. “Refresh my access” re-reads your role without signing out.
 
-> **Important:** the security rules changed to add roles + the new collections (households, notes, giving, users). **Re-publish `firestore.rules`** (Firestore ▸ Rules ▸ paste ▸ Publish) or the new features will show `permission-denied`. The app keeps working on core data even before you do this.
+> **Publish the rules once more:** the `users` collection is now email-keyed, so re-publish `firestore.rules` (Firestore ▸ Rules ▸ paste ▸ Publish) to enable **Grant access** on the Team tab. Everything else already works.
 
-## What's new in this version
-- **Email** field on members. **Households** (group families; assign from a member's Edit screen). **Follow-up log** — record calls/visits/notes with a timeline on each member profile. **Giving & Offerings** — record per service by category, with totals and breakdown. **Team** — manage who has access and their role.
-- **Offline mode** is on: attendance can be marked with a poor/absent connection and syncs automatically when back online.
+## Data safety
+
+- Every write is confirmed. If one fails, a red **“Not saved”** banner names the reason (e.g. rules rejected it) instead of the change silently disappearing on refresh.
+- If you are signed in and the database can't be reached, the app now **refuses to load demo data** — previously it quietly switched to browser-only storage, which is why entries vanished after a refresh. A yellow banner marks demo mode whenever it is active.
+- Headcount and minutes fields save as you type (they were previously read-only due to a controlled-input bug).
 
 ## Scheduled backups (recommended, ~2 min in the console)
-Firestore ▸ **Backups** ▸ *Create schedule* → daily, retention 7–14 days. (Requires the Blaze plan; backups themselves are inexpensive for this data size.) This protects against accidental deletion.
+Firestore ▸ **Backups** ▸ *Create schedule* → daily, retention 7–14 days. (Requires the Blaze plan; inexpensive at this data size.)
 
 ## Migration notes (what the cleanup did)
 

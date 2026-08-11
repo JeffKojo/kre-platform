@@ -162,6 +162,7 @@ class LocalBackend {
 
   /* users (local mode is single-admin; no-ops that keep the API shape) */
   async setUserRole() { return null; }
+  async removeUser() { return null; }
 }
 
 /* ------------------------------------------------------------- FIREBASE --- */
@@ -171,39 +172,46 @@ class FirebaseBackend {
   async init() {
     const user = this.fb.auth().currentUser;
     this.userEmail = user ? user.email : null;
-    // Ensure this signed-in user has a role doc (defaults to viewer; an admin promotes later).
-    if (user) {
-      const uref = this.db.collection('users').doc(user.uid);
-      let udoc = null;
-      try { udoc = await uref.get(); } catch (e) { udoc = null; }
-      if (user.email === OWNER_EMAIL) {
-        this.role = 'admin';
-        try { await uref.set({ email: user.email, role: 'admin' }, { merge: true }); } catch (e) {}
-      } else if (udoc && !udoc.exists) {
-        try { await uref.set({ email: user.email, role: 'viewer' }); } catch (e) {}
-        this.role = 'viewer';
-      } else if (udoc && udoc.exists) {
-        this.role = udoc.data().role || 'viewer';
-      } else {
-        this.role = 'viewer';
-      }
-    }
+    this.roleError = null;
+
     const cols = ['pastors', 'members', 'attendance', 'services', 'firstTimers', 'households', 'notes', 'giving', 'users'];
     const out = {};
     await Promise.all(cols.map(async c => {
       try { const snap = await this.db.collection(c).get(); out[c] = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); }
-      catch (e) { out[c] = []; }
+      catch (e) { if (c === 'users') this.roleError = e.code || String(e); out[c] = []; }
     }));
     this.state = out;
-    // realtime: any collection change re-pulls that collection and notifies
+
+    // Resolve this person's role. Accepts BOTH shapes so nothing breaks:
+    //   users/{email}  (current)  or  users/{uid} with an `email` field (older)
+    // The owner is always admin, which bootstraps the system. This is what fixes
+    // admins being demoted to viewer on sign-in.
+    if (user) this.role = this._resolveRole(user, out.users || []);
+
     cols.forEach(c => {
       this.db.collection(c).onSnapshot(snap => {
         this.state[c] = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
-        if (c === 'users' && user) { const me = this.state.users.find(u => u.id === user.uid); if (me && user.email !== OWNER_EMAIL) this.role = me.role || 'viewer'; }
+        if (c === 'users' && user) this.role = this._resolveRole(user, this.state.users);
         this._subs.forEach(cb => { try { cb(this.snapshot()); } catch (e) {} });
       }, () => {});
     });
+
+    // Self-register a viewer record only when this person is unknown, so an admin
+    // can see them in the Team tab and grant access.
+    if (user && this.role === 'viewer') {
+      const email = (user.email || '').toLowerCase();
+      const known = (out.users || []).some(u => (u.email || '').toLowerCase() === email || u.id === email);
+      if (email && !known) { try { await this.db.collection('users').doc(email).set({ email, role: 'viewer' }); } catch (e) {} }
+    }
     return this.snapshot();
+  }
+
+  _resolveRole(user, users) {
+    const email = (user.email || '').toLowerCase();
+    if (email && email === OWNER_EMAIL.toLowerCase()) return 'admin';
+    const hit = (users || []).find(u =>
+      u.id === email || (u.email || '').toLowerCase() === email || u.id === user.uid);
+    return (hit && hit.role) || 'viewer';
   }
   onChange(cb) { this._subs.push(cb); return () => { this._subs = this._subs.filter(x => x !== cb); }; }
   snapshot() { return JSON.parse(JSON.stringify(this.state)); }
@@ -273,7 +281,12 @@ class FirebaseBackend {
   }
   async deleteGiving(id) { await this.db.collection('giving').doc(id).delete(); }
 
-  async setUserRole(uid, role) { await this.db.collection('users').doc(uid).set({ role }, { merge: true }); return { id: uid, role }; }
+  async setUserRole(emailOrId, role) {
+    const id = (emailOrId || '').toLowerCase();
+    await this.db.collection('users').doc(id).set({ email: id, role }, { merge: true });
+    return { id, role };
+  }
+  async removeUser(emailOrId) { await this.db.collection('users').doc((emailOrId || '').toLowerCase()).delete(); }
 }
 
 /* --------------------------------------------------------------- FACTORY -- */
@@ -293,7 +306,13 @@ export async function createDB(opts) {
       await be.init();
       return be;
     } catch (e) {
-      console.warn('[KRE] Firebase init failed, falling back to local:', e);
+      console.warn('[KRE] Firebase init failed:', e);
+      // CRITICAL: if the user is signed in, never silently drop to local storage.
+      // Doing so sent their edits to the browser instead of Firestore, which is why
+      // data "vanished" after a refresh. Fail loudly instead.
+      let signedIn = false;
+      try { signedIn = !!window.firebase.auth().currentUser; } catch (_) {}
+      if (signedIn) { const err = new Error('firestore-unavailable'); err.cause = e; throw err; }
     }
   }
   const be = new LocalBackend();
