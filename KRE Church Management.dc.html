@@ -82,6 +82,9 @@
         <sc-for list="{{ nav }}" as="item" hint-placeholder-count="7">
           <button onClick="{{ item.onClick }}" style="{{ item.style }}">
             <span style="width:20px;text-align:center;font-size:14px;flex:none">{{ item.glyph }}</span>{{ item.label }}
+            <sc-if value="{{ item.hasBadge }}" hint-placeholder-val="{{ false }}">
+              <span style="margin-left:auto;min-width:20px;text-align:center;font-size:11px;font-weight:700;background:#ecc868;color:#26093f;border-radius:999px;padding:2px 7px">{{ item.badge }}</span>
+            </sc-if>
           </button>
         </sc-for>
       </nav>
@@ -115,6 +118,12 @@
 
       <!-- ---------- DASHBOARD ---------- -->
       <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ true }}">
+        <sc-if value="{{ dash.hasPending }}" hint-placeholder-val="{{ false }}">
+          <div data-noprint style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#eef4f0;border:1px solid #cfe0d5;color:#41614c;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px">
+            <b>Membership approvals waiting.</b><span>{{ dash.pendingLabel }}</span>
+            <button onClick="{{ dash.onGoApprovals }}" style="{{ ui.btnGhost }};margin-left:auto">Review now</button>
+          </div>
+        </sc-if>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:15px;margin-bottom:18px">
           <sc-for list="{{ dash.cards }}" as="c" hint-placeholder-count="6">
             <div style="{{ c.style }}">
@@ -210,7 +219,7 @@
             </div>
             <div style="{{ ui.panel }}">
               <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#2f8079;font-weight:700">③ Guests &amp; One-Timers</div>
-              <div style="{{ ui.muted }};margin:5px 0 12px">Present but not members — kept off the roll</div>
+              <div style="{{ ui.muted }};margin:5px 0 12px">Present but not members — kept off the roll. Each chip shows how many Sundays in a row they've come.</div>
               <div style="display:flex;gap:7px;margin-bottom:11px">
                 <input type="text" value="{{ sunday.guestInput }}" onInput="{{ sunday.guestType }}" onKeyDown="{{ sunday.guestKey }}" placeholder="Add a guest name…" style="{{ ui.input }};flex:1">
                 <button onClick="{{ sunday.addGuest }}" style="{{ ui.btn }}">Add</button>
@@ -218,13 +227,20 @@
               <sc-if value="{{ sunday.hasGuests }}" hint-placeholder-val="{{ true }}">
                 <div style="display:flex;flex-wrap:wrap;gap:6px">
                   <sc-for list="{{ sunday.guests }}" as="g" hint-placeholder-count="3">
-                    <span style="{{ ui.guestChip }}">{{ g.name }}<b style="color:#c2683f;cursor:pointer;margin-left:2px" onClick="{{ g.onRemove }}">✕</b></span>
+                    <span style="{{ ui.guestChip }}">{{ g.name }}<span style="{{ g.streakStyle }}">{{ g.streakLabel }}</span><b style="color:#c2683f;cursor:pointer;margin-left:2px" onClick="{{ g.onRemove }}">✕</b></span>
                   </sc-for>
                 </div>
+                <sc-if value="{{ sunday.hasReady }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:12px;background:#eef4f0;border:1px solid #cfe0d5;border-radius:10px;padding:11px 13px;font-size:12.5px;color:#41614c">
+                    {{ sunday.readyLabel }}
+                    <button onClick="{{ sunday.onGoApprovals }}" style="{{ ui.btnMini }};margin-top:8px;background:#5f7355">Review approvals</button>
+                  </div>
+                </sc-if>
               </sc-if>
               <sc-if value="{{ sunday.noGuests }}" hint-placeholder-val="{{ false }}">
                 <div style="{{ ui.muted }}">No guests recorded yet.</div>
               </sc-if>
+
             </div>
           </div>
 
@@ -249,6 +265,144 @@
             </div>
           </div>
         </div>
+
+        <!-- read-only recap: who stayed how long, plus this Sunday's guests -->
+        <sc-if value="{{ sunday.hasDurRows }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ ui.panel }};margin-top:15px">
+            <div style="{{ ui.panelH }}">
+              <h3 style="{{ ui.h3 }}">This Service at a Glance</h3>
+              <div style="{{ ui.muted }}">{{ sunday.presentTotal }} members present · {{ sunday.minutesTotal }} minutes logged · {{ sunday.guestCount }} guests</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px">
+              <sc-for list="{{ sunday.durRows }}" as="d" hint-placeholder-count="6">
+                <div style="display:flex;justify-content:space-between;gap:10px;padding:8px 12px;background:#f6f1ea;border-radius:9px;font-size:13px">
+                  <span style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ d.name }}</span><b style="color:#a47d1f;flex:none">{{ d.mins }}</b>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+      </sc-if>
+
+      <!-- ---------- MEMBERSHIP APPROVALS ---------- -->
+      <sc-if value="{{ isApprovals }}" hint-placeholder-val="{{ false }}">
+        <p style="{{ ui.intro }}">A guest who attends <b>{{ approvals.need }} Sundays in a row</b> and is still coming becomes a candidate for membership. Nothing happens automatically — an admin approves them here. On approval they join the roll, their guest Sundays become attendance records, and the date they joined is saved. Headcounts never change: the person simply moves from the guest list onto the roll.</p>
+        <div style="{{ ui.muted }};margin:-10px 0 18px;max-width:82ch">Guest names are matched against the roll by name, so people already on it — including different spellings from the pasted livestream lists — are excluded automatically. <b>{{ approvals.matchedCount }}</b> guest names are matched to existing members this way, which is why they don't appear below.</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:15px;margin-bottom:18px">
+          <sc-for list="{{ approvals.cards }}" as="c" hint-placeholder-count="4">
+            <div style="{{ c.style }}"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#928697;font-weight:600">{{ c.k }}</div><div style="font-family:'Fraunces',serif;font-size:32px;font-weight:600;margin-top:8px">{{ c.v }}</div><div style="font-size:12px;color:#5f5366;margin-top:5px">{{ c.d }}</div></div>
+          </sc-for>
+        </div>
+
+        <div style="{{ ui.panel }};margin-bottom:15px;border-color:#bcd0bf">
+          <div style="{{ ui.panelH }}"><h3 style="{{ ui.h3 }}">Ready to Approve</h3><div style="{{ ui.muted }}">reached {{ approvals.need }} consecutive Sundays</div></div>
+          <sc-if value="{{ approvals.hasCandidates }}" hint-placeholder-val="{{ true }}">
+            <div style="{{ ui.tblWrap }}">
+              <table style="{{ ui.table }}">
+                <thead><tr><th style="{{ ui.th }}">Guest</th><th style="{{ ui.th }}">Streak</th><th style="{{ ui.th }}">Visits</th><th style="{{ ui.th }}">First Seen</th><th style="{{ ui.th }}">Last Seen</th><th style="{{ ui.th }}">Action</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{ approvals.candidates }}" as="g" hint-placeholder-count="3">
+                    <tr style="border-bottom:1px solid #f1e9da">
+                      <td style="{{ ui.tdName }}">{{ g.name }}<div style="font-size:11px;color:#928697;font-weight:400">{{ g.visitList }}</div></td>
+                      <td style="{{ ui.td }}"><span style="{{ g.badge }}">{{ g.streak }}</span></td>
+                      <td style="{{ ui.td }}">{{ g.count }}</td>
+                      <td style="{{ ui.td }}">{{ g.firstVisit }}</td>
+                      <td style="{{ ui.td }}">{{ g.lastVisit }}</td>
+                      <td style="{{ ui.td }}"><div style="display:flex;gap:7px;flex-wrap:wrap"><button onClick="{{ g.onApprove }}" style="{{ ui.btn }}">Approve</button><button onClick="{{ g.onLink }}" style="{{ ui.btnGhost }}">Already a member…</button><button onClick="{{ g.onDismiss }}" style="{{ ui.btnGhost }}">Set aside</button></div></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </sc-if>
+          <sc-if value="{{ approvals.noCandidates }}" hint-placeholder-val="{{ false }}">
+            <div style="color:#928697;text-align:center;padding:30px">No one is waiting. Guests appear here once they've attended {{ approvals.need }} Sundays in a row.</div>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{ approvals.hasHistoric }}" hint-placeholder-val="{{ true }}">
+          <div style="{{ ui.panel }};margin-bottom:15px">
+            <div style="{{ ui.panelH }}"><h3 style="{{ ui.h3 }}">Reached the Streak Earlier</h3><div style="{{ ui.muted }}">hit {{ approvals.need }} in a row in the past but haven't come recently</div></div>
+            <div style="{{ ui.tblWrap }}">
+              <table style="{{ ui.table }}">
+                <thead><tr><th style="{{ ui.th }}">Guest</th><th style="{{ ui.th }}">Best Streak</th><th style="{{ ui.th }}">Visits</th><th style="{{ ui.th }}">Last Seen</th><th style="{{ ui.th }}">Action</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{ approvals.historic }}" as="g" hint-placeholder-count="5">
+                    <tr style="border-bottom:1px solid #f1e9da">
+                      <td style="{{ ui.tdName }}">{{ g.name }}</td>
+                      <td style="{{ ui.td }}"><span style="{{ g.badge }}">{{ g.streak }}</span></td>
+                      <td style="{{ ui.td }}">{{ g.count }}</td>
+                      <td style="{{ ui.td }}">{{ g.lastVisit }}</td>
+                      <td style="{{ ui.td }}"><div style="display:flex;gap:7px;flex-wrap:wrap"><button onClick="{{ g.onApprove }}" style="{{ ui.btnGhost }}">Approve anyway</button><button onClick="{{ g.onLink }}" style="{{ ui.btnGhost }}">Already a member…</button><button onClick="{{ g.onDismiss }}" style="{{ ui.btnGhost }}">Set aside</button></div></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ approvals.hasWatch }}" hint-placeholder-val="{{ true }}">
+          <div style="{{ ui.panel }};margin-bottom:15px">
+            <div style="{{ ui.panelH }}"><h3 style="{{ ui.h3 }}">On Watch</h3><div style="{{ ui.muted }}">currently attending, building toward {{ approvals.need }} in a row</div></div>
+            <div style="{{ ui.tblWrap }}">
+              <table style="{{ ui.table }}">
+                <thead><tr><th style="{{ ui.th }}">Guest</th><th style="{{ ui.th }}">Streak</th><th style="{{ ui.th }}">Visits</th><th style="{{ ui.th }}">Last Seen</th><th style="{{ ui.th }}">Action</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{ approvals.watch }}" as="g" hint-placeholder-count="5">
+                    <tr style="border-bottom:1px solid #f1e9da">
+                      <td style="{{ ui.tdName }}">{{ g.name }}</td>
+                      <td style="{{ ui.td }}"><span style="{{ g.badge }}">{{ g.streak }}</span></td>
+                      <td style="{{ ui.td }}">{{ g.count }}</td>
+                      <td style="{{ ui.td }}">{{ g.lastVisit }}</td>
+                      <td style="{{ ui.td }}"><div style="display:flex;gap:7px;flex-wrap:wrap"><button onClick="{{ g.onApprove }}" style="{{ ui.btnGhost }}">Approve early</button><button onClick="{{ g.onLink }}" style="{{ ui.btnGhost }}">Already a member…</button><button onClick="{{ g.onDismiss }}" style="{{ ui.btnGhost }}">Set aside</button></div></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ approvals.hasPromoted }}" hint-placeholder-val="{{ true }}">
+          <div style="{{ ui.panel }};margin-bottom:15px">
+            <div style="{{ ui.panelH }}"><h3 style="{{ ui.h3 }}">Approved from Guests</h3><div style="{{ ui.muted }}">now on the member roll</div></div>
+            <div style="{{ ui.tblWrap }}">
+              <table style="{{ ui.table }}">
+                <thead><tr><th style="{{ ui.th }}">Member</th><th style="{{ ui.th }}">Joined On</th><th style="{{ ui.th }}">Guest Visits Before</th><th style="{{ ui.th }}">Approved By</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{ approvals.promoted }}" as="p" hint-placeholder-count="3">
+                    <tr style="cursor:pointer;border-bottom:1px solid #f1e9da" onClick="{{ p.onOpen }}">
+                      <td style="{{ ui.tdName }}">{{ p.name }}</td><td style="{{ ui.td }}">{{ p.joinedAt }}</td><td style="{{ ui.td }}">{{ p.priorVisits }}</td><td style="{{ ui.td }}">{{ p.approvedBy }}</td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ approvals.hasLinked }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ ui.panel }};margin-bottom:15px">
+            <div style="{{ ui.panelH }}"><h3 style="{{ ui.h3 }}">Linked to Existing Members</h3><div style="{{ ui.muted }}">livestream spellings now saved as aliases</div></div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <sc-for list="{{ approvals.linked }}" as="l" hint-placeholder-count="3">
+                <span style="{{ ui.chipShow }}">{{ l.name }} → <b>{{ l.memberName }}</b><b style="color:#a47d1f;cursor:pointer;margin-left:5px" onClick="{{ l.onRestore }}">undo</b></span>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ approvals.hasDismissed }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ ui.panel }}">
+            <div style="{{ ui.panelH }}"><h3 style="{{ ui.h3 }}">Set Aside</h3><div style="{{ ui.muted }}">kept as guests — restore to reconsider</div></div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <sc-for list="{{ approvals.dismissed }}" as="d" hint-placeholder-count="3">
+                <span style="{{ ui.guestChip }}">{{ d.name }} · {{ d.streak }}<b style="color:#a47d1f;cursor:pointer;margin-left:4px" onClick="{{ d.onRestore }}">restore</b></span>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
       </sc-if>
 
       <!-- ---------- MEMBERS ---------- -->
@@ -318,7 +472,7 @@
 
       <!-- ---------- FIRST TIMERS ---------- -->
       <sc-if value="{{ isFirstTimers }}" hint-placeholder-val="{{ false }}">
-        <p style="{{ ui.intro }}">Visitors from their first Sunday — who invited them and whether they came back. Retention shows how well we turn first timers into regulars.</p>
+        <p style="{{ ui.intro }}">Visitors you record by hand, with who invited them — this is the invitation trail. Retention shows how well we turn first timers into regulars. It is separate from <b>Approvals</b>, which watches the guest lists you enter each Sunday and flags anyone who has come {{ ft.need }} weeks in a row; a person can appear in both.</p>
         <div style="display:flex;gap:9px;margin-bottom:15px"><button onClick="{{ ft.onAdd }}" style="{{ ui.btn }}">+ Add First Timer</button></div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:15px;margin-bottom:18px">
           <sc-for list="{{ ft.cards }}" as="c" hint-placeholder-count="4">
@@ -349,7 +503,7 @@
 
       <!-- ---------- FOLLOW-UP ---------- -->
       <sc-if value="{{ isFollowup }}" hint-placeholder-val="{{ false }}">
-        <p style="{{ ui.intro }}">Every member ranked by how long since they were last in service. The people at the top are who to call or visit this week.</p>
+        <p style="{{ ui.intro }}">KRE standard: a member <b>needs follow-up once they've missed {{ followup.limit }} services in a row</b>. Counted backwards from the most recent service — attending once resets it to zero. Services before someone joined never count against them. The people at the top are who to call or visit this week.</p>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:15px;margin-bottom:18px">
           <sc-for list="{{ followup.cards }}" as="c" hint-placeholder-count="3">
             <div style="{{ c.style }}"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#928697;font-weight:600">{{ c.k }}</div><div style="font-family:'Fraunces',serif;font-size:32px;font-weight:600;margin-top:8px">{{ c.v }}</div><div style="font-size:12px;color:#5f5366;margin-top:5px">{{ c.d }}</div></div>
@@ -357,11 +511,11 @@
         </div>
         <div style="{{ ui.tblWrap }}">
           <table style="{{ ui.table }}">
-            <thead><tr><th style="{{ ui.th }}">Member</th><th style="{{ ui.th }}">Status</th><th style="{{ ui.th }}">Pastor</th><th style="{{ ui.th }}">Last Seen</th><th style="{{ ui.th }}">Flag</th></tr></thead>
+            <thead><tr><th style="{{ ui.th }}">Member</th><th style="{{ ui.th }}">Status</th><th style="{{ ui.th }}">Pastor</th><th style="{{ ui.th }}">Last Seen</th><th style="{{ ui.th }}">Missed in a Row</th><th style="{{ ui.th }}">Flag</th></tr></thead>
             <tbody>
               <sc-for list="{{ followup.rows }}" as="m" hint-placeholder-count="12">
                 <tr style="cursor:pointer;border-bottom:1px solid #f1e9da" onClick="{{ m.onOpen }}">
-                  <td style="{{ ui.tdName }}">{{ m.name }}</td><td style="{{ ui.td }}"><span style="{{ m.badge }}">{{ m.status }}</span></td><td style="{{ ui.td }}">{{ m.pastor }}</td><td style="{{ ui.td }}">{{ m.lastSeen }}</td><td style="{{ ui.td }}"><span style="{{ m.tagStyle }}">{{ m.flag }}</span></td>
+                  <td style="{{ ui.tdName }}">{{ m.name }}</td><td style="{{ ui.td }}"><span style="{{ m.badge }}">{{ m.status }}</span></td><td style="{{ ui.td }}">{{ m.pastor }}</td><td style="{{ ui.td }}">{{ m.lastSeen }}</td><td style="{{ ui.td }}">{{ m.misses }}</td><td style="{{ ui.td }}"><span style="{{ m.tagStyle }}">{{ m.flag }}</span></td>
                 </tr>
               </sc-for>
             </tbody>
@@ -378,6 +532,12 @@
             <div style="{{ ui.pastorCard }}">
               <div style="{{ ui.pastorHead }}"><div><h3 style="color:#fff;font-family:'Fraunces',serif;font-weight:600;margin:0;font-size:19px">{{ p.name }}</h3><div style="font-size:12px;color:#ecc868">{{ p.count }} members</div></div><div style="display:flex;align-items:center;gap:10px"><div style="text-align:right"><div style="font-family:'Fraunces',serif;font-size:28px;font-weight:600;color:#ecc868">{{ p.showing }}</div><div style="font-size:11px;color:#ecc868">showing up</div></div><button onClick="{{ p.onEdit }}" title="Edit pastor" style="background:rgba(255,255,255,.14);border:none;color:#ecc868;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:13px">✎</button></div></div>
               <div style="padding:16px 18px">
+                <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:13px">
+                  <span style="{{ p.rollStyle }}" onClick="{{ p.onOpenMember }}">{{ p.rollLabel }}</span>
+                  <sc-if value="{{ p.needsRoll }}" hint-placeholder-val="{{ false }}">
+                    <button onClick="{{ p.onAddToRoll }}" style="{{ ui.btnGhost }}">+ Add to attendance roll</button>
+                  </sc-if>
+                </div>
                 <div style="display:flex;gap:10px;margin-bottom:12px">
                   <div style="{{ ui.mini }}"><div style="{{ ui.miniK }}">Attend rate</div><div style="{{ ui.miniV }}">{{ p.rate }}</div></div>
                   <div style="{{ ui.mini }}"><div style="{{ ui.miniK }}">Engaged</div><div style="{{ ui.miniV }}">{{ p.engaged }}</div></div>
@@ -636,6 +796,78 @@
             <div style="display:flex;align-items:center;gap:10px;margin-top:20px"><button onClick="{{ modal.onSave }}" style="{{ ui.btn }}">{{ modal.saveLabel }}</button><button onClick="{{ modal.onCancel }}" style="{{ ui.btnGhost }}">Cancel</button><sc-if value="{{ modal.canDelete }}" hint-placeholder-val="{{ false }}"><button onClick="{{ modal.onDelete }}" style="{{ ui.btnDanger }};margin-left:auto">Delete</button></sc-if></div>
           </sc-if>
 
+          <!-- approve guest as member -->
+          <sc-if value="{{ modal.isApproveGuest }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#eef4f0;border:1px solid #cfe0d5;border-radius:11px;padding:12px 14px;margin-bottom:16px;font-size:12.5px;color:#41614c">
+              <b>{{ modal.visitCount }} guest Sundays will be kept:</b> {{ modal.visitList }}
+              <div style="margin-top:6px">These become attendance records under their new profile, and their name is removed from those guest lists so nobody is counted twice. Headcounts stay identical.</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px">
+              <div style="grid-column:1/-1"><label style="{{ ui.lbl }}">Full name *</label><input type="text" value="{{ modal.fName }}" onInput="{{ modal.onF_name }}" style="{{ ui.input }};width:100%"></div>
+              <div><label style="{{ ui.lbl }}">Date joined</label><input type="date" value="{{ modal.fJoinedAt }}" onInput="{{ modal.onF_joinedAt }}" style="{{ ui.input }};width:100%"></div>
+              <div><label style="{{ ui.lbl }}">Status</label><select value="{{ modal.fStatus }}" onChange="{{ modal.onF_status }}" style="{{ ui.select }};width:100%"><sc-for list="{{ modal.statusOpts }}" as="o" hint-placeholder-count="6"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select></div>
+              <div><label style="{{ ui.lbl }}">Phone</label><input type="text" value="{{ modal.fPhone }}" onInput="{{ modal.onF_phone }}" style="{{ ui.input }};width:100%"></div>
+              <div><label style="{{ ui.lbl }}">Email</label><input type="email" value="{{ modal.fEmail }}" onInput="{{ modal.onF_email }}" style="{{ ui.input }};width:100%"></div>
+              <div><label style="{{ ui.lbl }}">Location</label><input type="text" value="{{ modal.fLocation }}" onInput="{{ modal.onF_location }}" style="{{ ui.input }};width:100%"></div>
+              <div><label style="{{ ui.lbl }}">Assigned Pastor</label><select value="{{ modal.fPastorId }}" onChange="{{ modal.onF_pastorId }}" style="{{ ui.select }};width:100%"><sc-for list="{{ modal.pastorOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select></div>
+              <div style="grid-column:1/-1"><label style="{{ ui.lbl }}">Household</label><select value="{{ modal.fHouseholdId }}" onChange="{{ modal.onF_householdId }}" style="{{ ui.select }};width:100%"><sc-for list="{{ modal.householdOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select></div>
+            </div>
+            <sc-if value="{{ modal.hasError }}" hint-placeholder-val="{{ false }}"><div style="color:#c2683f;font-size:13px;margin-top:11px">{{ modal.error }}</div></sc-if>
+            <sc-if value="{{ modal.hasDupWarn }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#fdf3e3;border:1px solid #e8cf9a;border-radius:11px;padding:13px 15px;margin-top:16px;font-size:13px;color:#8a5a12">
+                <b>Check this is not the same person.</b>
+                <div style="margin-top:5px">{{ modal.dupWarnText }}<b>{{ modal.dupWarnNames }}</b>. Approving now creates a second, separate profile.</div>
+                <div style="display:flex;gap:9px;margin-top:12px;flex-wrap:wrap">
+                  <button onClick="{{ modal.onDupProceed }}" style="{{ ui.btn }}">Yes, a different person — approve</button>
+                  <button onClick="{{ modal.onDupCancel }}" style="{{ ui.btnGhost }}">Cancel</button>
+                </div>
+              </div>
+            </sc-if>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:20px"><button onClick="{{ modal.onSave }}" style="{{ ui.btn }}">{{ modal.saveLabel }}</button><button onClick="{{ modal.onCancel }}" style="{{ ui.btnGhost }}">Cancel</button></div>
+          </sc-if>
+
+          <!-- link guest to an existing member -->
+          <sc-if value="{{ modal.isLinkGuest }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#f6f1ea;border:1px solid #e7dcc9;border-radius:11px;padding:12px 14px;margin-bottom:14px;font-size:12.5px;color:#5f5366">
+              Pick who <b>{{ modal.guestName }}</b> really is. Their guest Sundays ({{ modal.visitList }}) move onto that member's attendance, the spelling is saved as an alias so it never shows up as a guest again, and the name is removed from those guest lists. No history is lost and headcounts don't change.
+            </div>
+            <input type="text" value="{{ modal.search }}" onInput="{{ modal.onSearch }}" placeholder="Search the roll…" style="{{ ui.input }};width:100%;margin-bottom:11px">
+            <div style="display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto">
+              <sc-for list="{{ modal.memberOpts }}" as="o" hint-placeholder-count="8">
+                <button onClick="{{ o.onPick }}" style="{{ o.style }}">{{ o.label }}</button>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:18px"><button onClick="{{ modal.onCancel }}" style="{{ ui.btnGhost }}">Cancel</button></div>
+          </sc-if>
+
+          <!-- pastor onto the attendance roll -->
+          <sc-if value="{{ modal.isPastorToRoll }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#f3ecf6;border:1px solid #ddd0e6;border-radius:11px;padding:12px 14px;margin-bottom:16px;font-size:12.5px;color:#5b3d70">
+              This creates a member record for the pastor with the status <b>Pastor</b>, so they appear in This Sunday and the Register and can be marked present. Their pastor card and assigned flock stay exactly as they are.
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px">
+              <div style="grid-column:1/-1"><label style="{{ ui.lbl }}">Name *</label><input type="text" value="{{ modal.fName }}" onInput="{{ modal.onF_name }}" style="{{ ui.input }};width:100%"></div>
+              <div><label style="{{ ui.lbl }}">Phone</label><input type="text" value="{{ modal.fPhone }}" onInput="{{ modal.onF_phone }}" style="{{ ui.input }};width:100%"></div>
+              <div><label style="{{ ui.lbl }}">Email</label><input type="email" value="{{ modal.fEmail }}" onInput="{{ modal.onF_email }}" style="{{ ui.input }};width:100%"></div>
+              <div><label style="{{ ui.lbl }}">Location</label><input type="text" value="{{ modal.fLocation }}" onInput="{{ modal.onF_location }}" style="{{ ui.input }};width:100%"></div>
+              <div><label style="{{ ui.lbl }}">On the roll since</label><input type="date" value="{{ modal.fJoinedAt }}" onInput="{{ modal.onF_joinedAt }}" style="{{ ui.input }};width:100%"></div>
+            </div>
+            <div style="margin-top:18px">
+              <label style="{{ ui.lbl }}">Their names in the livestream lists ({{ modal.pickedCount }} selected)</label>
+              <div style="{{ ui.muted }};margin-bottom:9px">Tick the spellings that are this pastor. Those Sundays become their attendance and stop counting as guests.</div>
+              <div style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto">
+                <sc-for list="{{ modal.aliasOpts }}" as="a" hint-placeholder-count="3">
+                  <div onClick="{{ a.onToggle }}" style="{{ a.style }}">
+                    <span style="width:18px;height:18px;flex:none;border-radius:5px;border:1.5px solid #b9ad9a;display:grid;place-items:center;font-size:11px;color:#5f7355;background:#fff">{{ a.glyph }}</span>
+                    <span style="flex:1">{{ a.name }}</span><b style="color:#928697;font-weight:600">{{ a.visits }} Sundays</b>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <sc-if value="{{ modal.hasError }}" hint-placeholder-val="{{ false }}"><div style="color:#c2683f;font-size:13px;margin-top:11px">{{ modal.error }}</div></sc-if>
+            <div style="display:flex;gap:10px;margin-top:20px"><button onClick="{{ modal.onSave }}" style="{{ ui.btn }}">{{ modal.saveLabel }}</button><button onClick="{{ modal.onCancel }}" style="{{ ui.btnGhost }}">Cancel</button></div>
+          </sc-if>
+
           <!-- household form -->
           <sc-if value="{{ modal.isHouseholdForm }}" hint-placeholder-val="{{ false }}">
             <div><label style="{{ ui.lbl }}">Household name *</label><input type="text" value="{{ modal.fName }}" onInput="{{ modal.onF_name }}" placeholder="e.g. The Bio Family" style="{{ ui.input }};width:100%"></div>
@@ -664,13 +896,16 @@ class Component extends DCLogic {
     svcDate: null, sundaySearch: '', guestInput: '', form: {}, formErr: '', toast: '', toastAt: 0,
     needsLogin: false, loginEmail: '', loginPass: '', loginErr: '', reportType: 'roster',
     role: 'admin', userEmail: '', noteText: '', noteType: 'call', giveDate: null, giveAmount: '', giveCategory: 'Offering',
-    minEdits: {}, hcEdit: null, bootError: '', saveError: '', saving: 0, inviteEmail: '', inviteRole: 'editor'
+    minEdits: {}, hcEdit: null, dupWarn: null, dupAck: false, bootError: '', saveError: '', saving: 0, inviteEmail: '', inviteRole: 'editor'
   };
 
   async componentDidMount() {
-    const mod = await import('./kre-db.js?v=6');
+    const mod = await import('./kre-db.js?v=9');
     this._mod = mod;
     this._STATUSES = mod.STATUSES;
+    this.GUEST_STREAK = mod.GUEST_STREAK_FOR_MEMBERSHIP || 3;
+    this.MISS_LIMIT = mod.MISSES_FOR_FOLLOWUP || 4;
+    this._nkey = mod.nameKey;
     const cfg = (typeof window !== 'undefined') && window.KRE_FIREBASE_CONFIG;
     const useFb = cfg && cfg.apiKey && cfg.apiKey.indexOf('PASTE') < 0 && typeof window.firebase !== 'undefined' && window.firebase.auth;
     if (useFb) {
@@ -727,8 +962,11 @@ class Component extends DCLogic {
 
   /* ---------------- constants & tiny utils ---------------- */
   STATUS_COLOR(s) {
-    return ({ Growing:'#5f7355', Active:'#2f8079', Worker:'#cb9a2f', Covenant:'#6b2c3e', Inactive:'#9a8d86', Drifting:'#c2683f', Unclassified:'#b3a99e' })[s] || '#b3a99e';
+    return ({ Growing:'#5f7355', Active:'#2f8079', Worker:'#cb9a2f', Covenant:'#6b2c3e', Pastor:'#4a1d6e', Inactive:'#9a8d86', Drifting:'#c2683f', Unclassified:'#b3a99e' })[s] || '#b3a99e';
   }
+  // Statuses that count as engaged. Derived in one place so a new status can never
+  // silently drop people out of the dashboard totals.
+  ENGAGED_STATUSES(){ return ['Growing','Active','Worker','Covenant','Pastor']; }
   _pad(n){ return (n<10?'0':'')+n; }
   _todayISO(){ const d=new Date(); return d.getFullYear()+'-'+this._pad(d.getMonth()+1)+'-'+this._pad(d.getDate()); }
   _latestSunday(){ const d=new Date(); d.setDate(d.getDate()-((d.getDay()+7)%7)); return d.getFullYear()+'-'+this._pad(d.getMonth()+1)+'-'+this._pad(d.getDate()); }
@@ -754,7 +992,8 @@ class Component extends DCLogic {
     const notesByMember = {}; (snap.notes||[]).forEach(n => { (notesByMember[n.memberId]=notesByMember[n.memberId]||[]).push(n); });
     Object.values(notesByMember).forEach(arr => arr.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)));
     const dates = this._allDates(snap);
-    const c = { snap, membersById, pastorsById, attByMember, attByDate, serviceByDate, householdsById, notesByMember, dates };
+    const c = { snap, membersById, pastorsById, attByMember, attByDate, serviceByDate, householdsById, notesByMember, dates,
+      guestDecisions: snap.guestDecisions || [] };
     this._cache = c; this._cacheSrc = snap; return c;
   }
   _allDates(snap){
@@ -766,7 +1005,95 @@ class Component extends DCLogic {
   _servicesPresent(id){ const rec=this._idx().attByMember[id]||{}; let c=0; this._idx().dates.forEach(d=>{ if(rec[d]&&rec[d].present)c++; }); return c; }
   _rate(id){ const rec=this._idx().attByMember[id]||{}; let p=0,t=0; this._idx().dates.forEach(d=>{ const a=rec[d]; if(a&&(a.present===true||a.present===false)){t++; if(a.present)p++;} }); return t?p/t:0; }
   _lastSeen(id){ const rec=this._idx().attByMember[id]||{}; let last=null; this._idx().dates.forEach(d=>{ if(rec[d]&&rec[d].present)last=d; }); return last; }
-  _weeksSince(id){ const ls=this._lastSeen(id); if(!ls)return 99; return this._idx().dates.filter(d=>d>ls).length; }
+
+  /* KRE standard: someone needs follow-up after MISS_LIMIT (4) CONSECUTIVE
+   * services missed. Counted backwards from the most recent service, stopping at
+   * the first service they attended. Services before a member joined never count
+   * against them, so a newly approved member is not instantly flagged. */
+  _consecutiveMisses(id){
+    const I=this._idx(); const rec=I.attByMember[id]||{};
+    const m=I.membersById[id]; const joined=(m&&m.joinedAt)||null;
+    let n=0;
+    for(let i=I.dates.length-1;i>=0;i--){
+      const d=I.dates[i];
+      if(joined && d<joined) break;
+      const a=rec[d];
+      if(a&&a.present) break;
+      n++;
+    }
+    return n;
+  }
+  _needsFollowup(id){ return this._consecutiveMisses(id)>=(this.MISS_LIMIT||4); }
+
+  /* ---- guest attendance streaks (guest -> member pipeline) ---------------
+   * A guest who appears GUEST_STREAK (3) Sundays in a row becomes a candidate
+   * for membership, pending an admin's approval. */
+  _guestStats(I){
+    if(this._gsCache && this._gsSrc===I.snap) return this._gsCache;
+    const dates=I.dates, idxOf={}; dates.forEach((d,i)=>{ idxOf[d]=i; });
+    const nk=this._nkey||(s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''));
+    const map={};
+    (I.snap.services||[]).forEach(s=>{
+      (s.guestRoll||[]).forEach(g=>{
+        const k=nk(g); if(!k)return;
+        const e=map[k]||(map[k]={key:k,name:g,visits:[]});
+        if(e.visits.indexOf(s.date)<0) e.visits.push(s.date);
+        if(String(g).trim().length>String(e.name).trim().length) e.name=g;
+      });
+    });
+    // Match a guest against the roll generously: the imported guest lists are pasted
+    // livestream rolls, so the same person appears as "Michael Mante Osei Bobie" and
+    // "Michael Bobie". Sharing two name words (or one name containing the other) is
+    // treated as the same person, so approving can never create a duplicate member.
+    const toks=s=>String(s||'').toLowerCase().replace(/[^a-z ]/g,' ').split(/\s+/).filter(t=>t.length>2);
+    // Every member contributes their real name AND any recorded aliases, so a
+    // spelling an admin has already linked ("Ps Gyan" -> Pastor Gyan) never
+    // resurfaces as a guest or a candidate again.
+    const memberToks=[];
+    (I.snap.members||[]).forEach(m=>{
+      [m.name].concat(m.aliases||[]).forEach(n=>{ if(n) memberToks.push({m,t:toks(n),k:nk(n)}); });
+    });
+    const likelyMember=(name)=>{
+      const gt=toks(name), gk=nk(name); if(!gk)return null;
+      for(const mt of memberToks){
+        if(mt.k===gk) return mt.m;
+        if(!mt.t.length||!gt.length) continue;
+        if(mt.t.filter(t=>gt.indexOf(t)>=0).length>=2) return mt.m;
+        if(mt.t.every(t=>gt.indexOf(t)>=0)||gt.every(t=>mt.t.indexOf(t)>=0)) return mt.m;
+      }
+      return null;
+    };
+    const decisions={}; (I.snap.guestDecisions||[]).forEach(d=>{ decisions[d.id||nk(d.name)]=d; });
+    // "Still coming" = seen at one of the last two services. A streak that ended
+    // months ago is history, not a live approval.
+    const recent=dates.slice(-2);
+    const list=Object.keys(map).map(k=>{
+      const e=map[k]; e.visits.sort();
+      let best=e.visits.length?1:0, cur=e.visits.length?1:0;
+      for(let i=1;i<e.visits.length;i++){
+        cur = (idxOf[e.visits[i]]===idxOf[e.visits[i-1]]+1) ? cur+1 : 1;
+        if(cur>best) best=cur;
+      }
+      const last=e.visits[e.visits.length-1]||null;
+      return { key:k, name:e.name, visits:e.visits, count:e.visits.length,
+        bestStreak:best, currentStreak:cur, lastVisit:last, firstVisit:e.visits[0]||null,
+        stillComing:recent.indexOf(last)>=0, existingMember:likelyMember(e.name), decision:decisions[k]||null };
+    });
+    const need=this.GUEST_STREAK||3;
+    const open=list.filter(g=>!g.existingMember && !g.decision);
+    const out={
+      all:list.sort((a,b)=>b.bestStreak-a.bestStreak||b.count-a.count||a.name.localeCompare(b.name)),
+      candidates:open.filter(g=>g.currentStreak>=need && g.stillComing),
+      historic:open.filter(g=>!(g.currentStreak>=need && g.stillComing) && g.bestStreak>=need),
+      watch:open.filter(g=>g.bestStreak<need),
+      dismissed:list.filter(g=>g.decision && (g.decision.decision==='dismissed'||g.decision.decision==='platform')),
+      linked:list.filter(g=>g.decision && g.decision.decision==='linked'),
+      alreadyMembers:list.filter(g=>!!g.existingMember),
+      need
+    };
+    this._gsCache=out; this._gsSrc=I.snap; return out;
+  }
+  _pendingApprovals(){ try{ return this._guestStats(this._idx()).candidates.length; }catch(e){ return 0; } }
   _avgDur(id){ const rec=this._idx().attByMember[id]||{}; const v=[]; this._idx().dates.forEach(d=>{ if(rec[d]&&rec[d].minutes>0)v.push(rec[d].minutes); }); return v.length?v.reduce((a,b)=>a+b,0)/v.length:0; }
 
   /* ---------------- navigation & toast ---------------- */
@@ -888,18 +1215,21 @@ class Component extends DCLogic {
     const canEdit = S.role !== 'viewer';
     const NAV = [
       ['dashboard','Dashboard','◆'], ['sunday','This Sunday','✦'], ['members','Members','◉'], ['households','Households','⌂'],
-      ['register','Register','▤'], ['firsttimers','First Timers','✧'], ['followup','Follow-Up','◔'], ['pastors','Pastors','✚'],
+      ['register','Register','▤'], ['firsttimers','First Timers','✧'], ['approvals','Approvals','✔'], ['followup','Follow-Up','◔'], ['pastors','Pastors','✚'],
       ['giving','Giving','◈'], ['reports','Reports','▦']
     ];
     if (canAdmin) NAV.push(['team','Team','⚑']);
     const titles = { dashboard:['Insight','Dashboard'], sunday:['Record','This Sunday'], members:['People','Members'], households:['People','Households'],
       register:['People','Attendance Register'], firsttimers:['Growth','First Timers'], followup:['Care','Follow-Up'], pastors:['Care','Pastor Engagement'],
-      giving:['Stewardship','Giving & Offerings'], reports:['Export','Reports & Download'], team:['Admin','Team & Access'] };
+      giving:['Stewardship','Giving & Offerings'], reports:['Export','Reports & Download'], team:['Admin','Team & Access'],
+      approvals:['Growth','Membership Approvals'] };
+    const pending = this._pendingApprovals();
     const nav = NAV.map(([key,label,glyph]) => {
       const active = S.screen===key;
       const style = 'display:flex;align-items:center;gap:11px;font-size:14px;font-weight:500;border:none;border-radius:11px;padding:11px 13px;cursor:pointer;text-align:left;width:100%;transition:.15s;'
         + (active ? 'background:linear-gradient(100deg,rgba(205,164,52,.22),rgba(205,164,52,.06));color:#fff' : 'background:transparent;color:#d9cce4');
-      return { key, label, glyph, style, onClick:()=>this.go(key) };
+      const badge = (key==='approvals' && pending>0) ? String(pending) : '';
+      return { key, label, glyph, style, onClick:()=>this.go(key), badge, hasBadge:!!badge };
     });
     Object.assign(base, {
       modeLabel: this.state.mode==='firebase' ? 'Live · Firebase' : 'Demo · local data',
@@ -907,7 +1237,7 @@ class Component extends DCLogic {
       nav, crumb: titles[S.screen][0], title: titles[S.screen][1],
       isDashboard:S.screen==='dashboard', isSunday:S.screen==='sunday', isMembers:S.screen==='members',
       isRegister:S.screen==='register', isFirstTimers:S.screen==='firsttimers', isFollowup:S.screen==='followup', isPastors:S.screen==='pastors', isReports:S.screen==='reports',
-      isHouseholds:S.screen==='households', isGiving:S.screen==='giving', isTeam:S.screen==='team',
+      isHouseholds:S.screen==='households', isGiving:S.screen==='giving', isTeam:S.screen==='team', isApprovals:S.screen==='approvals',
       canEdit, canAdmin, roleLabel: S.role.charAt(0).toUpperCase()+S.role.slice(1),
       toastShow: !!S.toast, toast: S.toast,
       hasSaveError: !!S.saveError, saveError: S.saveError,
@@ -928,6 +1258,7 @@ class Component extends DCLogic {
     if (base.isHouseholds) base.households = this._vmHouseholds(I);
     if (base.isGiving) base.giving = this._vmGiving(I);
     if (base.isTeam) base.team = this._vmTeam(I);
+    if (base.isApprovals) base.approvals = this._vmApprovals(I);
 
     Object.assign(base, this._vmModal(I));
     return base;
@@ -937,30 +1268,38 @@ class Component extends DCLogic {
   _vmDashboard(I){
     const mem = I.snap.members, total = mem.length;
     const sc = {}; mem.forEach(m=>{ sc[m.status]=(sc[m.status]||0)+1; });
-    const engaged = mem.filter(m=>['Growing','Active','Worker','Covenant'].includes(m.status)).length;
+    const engaged = mem.filter(m=>this.ENGAGED_STATUSES().indexOf(m.status)>=0).length;
     const workers = mem.filter(m=>m.status==='Worker');
     const wRate = workers.length?Math.round(workers.reduce((a,m)=>a+this._rate(m.id),0)/workers.length*100):0;
-    const atRisk = mem.filter(m=>this._weeksSince(m.id)>=4);
+    const atRisk = mem.filter(m=>this._needsFollowup(m.id));
     const gv = I.snap.services.map(s=>s.headcount).filter(v=>v!=null);
     const avgGen = gv.length?Math.round(gv.reduce((a,b)=>a+b,0)/gv.length):0;
     const ft = I.snap.firstTimers, ftRet = ft.filter(f=>this._ftReturned(f,I)).length;
     const cards = [
       ['Total Members', total, 'on the roll', '#5e2a87'],
-      ['Avg. Sunday Attendance', avgGen, gv.length+' services', '#2f8079'],
-      ['Engaged Members', engaged, this._pct(engaged,total)+' of roll', '#5f7355'],
+      ['Avg. Sunday Attendance', avgGen, 'headcount incl. guests · '+gv.length+' services', '#2f8079'],
+      ['Engaged Members', engaged, this._pct(engaged,total)+' of roll by status', '#5f7355'],
       ['First-Timer Retention', this._pct(ftRet,ft.length), ftRet+' of '+ft.length+' returned', '#2f8079'],
       ['Worker Reliability', wRate+'%', 'avg worker attendance', '#cb9a2f'],
-      ['Needs Follow-Up', atRisk.length, 'not seen 4+ services', '#c2683f'],
+      ['Needs Follow-Up', atRisk.length, this.MISS_LIMIT+'+ services missed in a row', '#c2683f'],
     ].map(c=>({ k:c[0], v:c[1], d:c[2], style:this._statCard(c[3]) }));
     const gvSorted = I.snap.services.slice().sort((a,b)=>a.date.localeCompare(b.date)).filter(s=>s.headcount!=null);
     const maxG = Math.max(1, ...gvSorted.map(s=>s.headcount));
     const trend = gvSorted.map(s=>({ label:this._fmt(s.date), title:this._fmtFull(s.date)+': '+s.headcount, barStyle:'height:'+(s.headcount/maxG*100)+'%' }));
-    const statusOrder = ['Growing','Active','Worker','Covenant','Inactive','Drifting','Unclassified'];
+    // Every status in use is listed, in the canonical order, with anything unexpected
+    // appended — so no member is ever left out of the breakdown.
+    const known=(this._STATUSES||[]).slice();
+    const statusOrder = known.concat(Object.keys(sc).filter(s=>known.indexOf(s)<0));
     const status = statusOrder.filter(s=>sc[s]).map(s=>({ label:s, n:sc[s], badge:this._badge(s), barStyle:'width:'+(sc[s]/total*100)+'%;background:'+this.STATUS_COLOR(s) }));
     const faithfulArr = mem.map(m=>({m,r:this._rate(m.id),sp:this._servicesPresent(m.id)})).filter(x=>x.sp>0).sort((a,b)=>b.r-a.r||b.sp-a.sp).slice(0,6);
     const faithful = faithfulArr.map(x=>({ name:x.m.name, pct:Math.round(x.r*100)+'%', barStyle:'width:'+(x.r*100)+'%', onOpen:()=>this.openMember(x.m.id) }));
-    const risk = atRisk.slice(0,10).map(m=>({ name:m.name, ago:(this._weeksSince(m.id)>=99?'never':this._weeksSince(m.id)+'w'), onOpen:()=>this.openMember(m.id) }));
-    return { cards, trend, status, faithful, risk, hasRisk:atRisk.length>0, noRisk:atRisk.length===0 };
+    const risk = atRisk.slice(0,10).map(m=>({ name:m.name, ago:this._consecutiveMisses(m.id)+' missed', onOpen:()=>this.openMember(m.id) }));
+    const pending=this._pendingApprovals();
+    return { cards, trend, status, faithful, risk, hasRisk:atRisk.length>0, noRisk:atRisk.length===0,
+      pending, hasPending:pending>0,
+      pendingLabel:pending===1?'1 guest has attended '+(this.GUEST_STREAK||3)+' Sundays in a row and is ready to be approved as a member.'
+        :pending+' guests have attended '+(this.GUEST_STREAK||3)+' Sundays in a row and are ready to be approved as members.',
+      onGoApprovals:()=>this.go('approvals') };
   }
 
   /* ---------- this sunday vm ---------- */
@@ -991,15 +1330,38 @@ class Component extends DCLogic {
         minKey:(e)=>{ if(e.key==='Enter')e.target.blur(); },
       };
     });
-    const guestVms = guests.map((g,i)=>({ name:g, onRemove:()=>{ const arr=guests.slice(); arr.splice(i,1); this.setGuests(date,arr); } }));
-    const suggested = markedCount + guests.length;
+    // Each guest chip shows how many Sundays in a row they have now attended, so
+    // the person recording the roll can see a membership candidate forming.
+    const gs=this._guestStats(I), need=gs.need;
+    const mkChip=(g,i)=>{
+      const st=gs.all.find(x=>x.key===this._nkey(g));
+      const streak=st?st.bestStreak:1;
+      const isMember=!!(st&&st.existingMember);
+      const decided=!!(st&&st.decision);
+      const ready=streak>=need&&!isMember&&!decided;
+      return { name:g, isReady:ready,
+        streakLabel:ready?('★ '+streak+' in a row — ready'):(isMember?'on the roll':(streak+'/'+need)),
+        streakStyle:'font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;background:'+(ready?'rgba(95,115,85,.2)':'rgba(148,134,151,.16)')+';color:'+(ready?'#4f6147':'#7d7288'),
+        onRemove:()=>{ const arr=guests.slice(); arr.splice(i,1); this.setGuests(date,arr); } };
+    };
+    const guestVms = guests.map(mkChip);
+    const realGuestCount = guestVms.length;
+    const readyCount=guestVms.filter(g=>g.isReady).length;
+    const suggested = markedCount + realGuestCount;
+    const durRows=roll.filter(m=>m.present).map(m=>({ name:m.name, mins:(m.minutes===''||m.minutes==null)?'—':(m.minutes+' min') }));
     return {
       dateISO:date, dateLabel:this._fmtFull(date),
       statusLine: (svc.headcount!=null||markedCount>0||guests.length>0)?'Recording in progress':'New service — nothing recorded yet',
       headcount: (this.state.hcEdit&&this.state.hcEdit.k===date) ? this.state.hcEdit.v : (svc.headcount!=null?svc.headcount:''),
       hcType:(e)=>{ const v=e.target.value; this.setState({hcEdit:{k:date,v}}); this.setHeadcount(date,v,true); },
-      markedCount, guestCount:guests.length, suggested,
-      roll, guests:guestVms, hasGuests:guests.length>0, noGuests:guests.length===0,
+      markedCount, guestCount:realGuestCount, suggested,
+      roll, guests:guestVms, hasGuests:guestVms.length>0, noGuests:guestVms.length===0,
+      readyCount, hasReady:readyCount>0,
+      readyLabel:readyCount===1?'1 guest here has now attended '+need+' Sundays in a row — approve them as a member.'
+        :readyCount+' guests here have attended '+need+' Sundays in a row — approve them as members.',
+      onGoApprovals:()=>this.go('approvals'),
+      durRows, hasDurRows:durRows.length>0, presentTotal:durRows.length,
+      minutesTotal:durRows.reduce((a,r)=>a+(parseInt(r.mins,10)||0),0),
       search:this.state.sundaySearch, guestInput:this.state.guestInput,
       prev:()=>this._shiftSunday(-7), next:()=>this._shiftSunday(7),
       pick:(e)=>{ if(e.target.value)this.setState({svcDate:e.target.value}); },
@@ -1017,7 +1379,10 @@ class Component extends DCLogic {
 
   /* ---------- members vm ---------- */
   _vmMembers(I){
-    const FILTERS=['All','Growing','Worker','Active','Covenant','Inactive','Drifting'];
+    // Filters follow the statuses actually in use, so nobody becomes unreachable.
+    const inUse={}; I.snap.members.forEach(m=>{ inUse[m.status]=true; });
+    const FILTERS=['All'].concat((this._STATUSES||[]).filter(s=>inUse[s]))
+      .concat(Object.keys(inUse).filter(s=>(this._STATUSES||[]).indexOf(s)<0));
     const filters = FILTERS.map(f=>({ label:f, onClick:()=>this.setState({memFilter:f}),
       style:'font-size:12.5px;font-weight:500;padding:7px 13px;border-radius:999px;border:1.5px solid '+(this.state.memFilter===f?'#4a1d6e':'#e7dcc9')+';background:'+(this.state.memFilter===f?'#4a1d6e':'#fffdfa')+';color:'+(this.state.memFilter===f?'#fff':'#5f5366')+';cursor:pointer' }));
     let rows = I.snap.members.slice();
@@ -1082,19 +1447,31 @@ class Component extends DCLogic {
       return { name:f.name, invitedBy:f.invitedBy||'—', firstVisit:this._fmtFull(f.firstVisit), times:(f.visits||[]).length,
         tag:r?'Returned':'Not yet', tagStyle:'font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;background:'+(r?'rgba(95,115,85,.18)':'rgba(194,104,63,.16)')+';color:'+(r?'#5f7355':'#c2683f'),
         onOpen:()=>this.openFirstTimer(f.id) }; });
-    return { cards, inviters, rows, onAdd:()=>this.openAddFirstTimer() };
+    return { cards, inviters, rows, need:this.GUEST_STREAK||3, onAdd:()=>this.openAddFirstTimer() };
   }
 
   /* ---------- follow-up vm ---------- */
   _vmFollowup(I){
-    const arr=I.snap.members.map(m=>({m,ws:this._weeksSince(m.id),sp:this._servicesPresent(m.id),ls:this._lastSeen(m.id)})).sort((a,b)=>b.ws-a.ws);
-    const need=arr.filter(x=>x.ws>=4).length;
-    const cards=[['Need Follow-Up',need,'not seen 4+ services','#c2683f'],['Seen Recently',arr.filter(x=>x.ws<3&&x.sp>0).length,'within last 2 services','#5f7355'],['Never Recorded',arr.filter(x=>x.sp===0).length,'no attendance yet','#9a8d86']]
+    const LIMIT=this.MISS_LIMIT||4;
+    const arr=I.snap.members.map(m=>({m,miss:this._consecutiveMisses(m.id),sp:this._servicesPresent(m.id),ls:this._lastSeen(m.id)}))
+      .sort((a,b)=>b.miss-a.miss||a.m.name.localeCompare(b.m.name));
+    const need=arr.filter(x=>x.miss>=LIMIT).length;
+    const cards=[['Need Follow-Up',need,LIMIT+'+ services missed in a row','#c2683f'],
+      ['Attending',arr.filter(x=>x.miss===0).length,'present at the last service','#5f7355'],
+      ['Slipping',arr.filter(x=>x.miss>0&&x.miss<LIMIT).length,'1–'+(LIMIT-1)+' missed in a row','#cb9a2f'],
+      ['Never Recorded',arr.filter(x=>x.sp===0).length,'no attendance yet','#9a8d86']]
       .map(c=>({k:c[0],v:c[1],d:c[2],style:this._statCard(c[3])}));
-    const rows=arr.map(({m,ws,sp,ls})=>{ let flag,c; if(sp===0){flag='Never seen';c='#c2683f';} else if(ws>=6){flag=ws+' services ago';c='#c2683f';} else if(ws>=3){flag=ws+' services ago';c='#cb9a2f';} else {flag='Recent';c='#5f7355';}
-      return { name:m.name, status:m.status, badge:this._badge(m.status), pastor:(I.pastorsById[m.pastorId]&&I.pastorsById[m.pastorId].name)||'—', lastSeen:this._fmtFull(ls),
-        flag, tagStyle:'font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;color:#fff;background:'+c, onOpen:()=>this.openMember(m.id) }; });
-    return { cards, rows };
+    const rows=arr.map(({m,miss,sp,ls})=>{
+      let flag,c;
+      if(miss===0){ flag='Attending'; c='#5f7355'; }
+      else if(miss<LIMIT){ flag=miss+' missed in a row'; c='#cb9a2f'; }
+      else { flag=miss+' missed in a row'; c='#c2683f'; }
+      if(sp===0) flag='Never seen ('+miss+' missed)';
+      return { name:m.name, status:m.status, badge:this._badge(m.status),
+        pastor:(I.pastorsById[m.pastorId]&&I.pastorsById[m.pastorId].name)||'—', lastSeen:this._fmtFull(ls), misses:miss,
+        flag, tagStyle:'font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;color:#fff;background:'+c,
+        onOpen:()=>this.openMember(m.id) }; });
+    return { cards, rows, limit:LIMIT };
   }
 
   /* ---------- pastors vm ---------- */
@@ -1102,13 +1479,21 @@ class Component extends DCLogic {
     const groups={}; I.snap.members.forEach(m=>{ if(!m.pastorId)return; (groups[m.pastorId]=groups[m.pastorId]||[]).push(m); });
     const cards=I.snap.pastors.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(p=>{
       const pid=p.id; const list=groups[pid]||[];
-      const showing=list.filter(m=>this._weeksSince(m.id)<3&&this._servicesPresent(m.id)>0);
-      const quiet=list.filter(m=>!(this._weeksSince(m.id)<3&&this._servicesPresent(m.id)>0));
+      const showing=list.filter(m=>!this._needsFollowup(m.id));
+      const quiet=list.filter(m=>this._needsFollowup(m.id));
       const rate=list.length?Math.round(list.reduce((a,m)=>a+this._rate(m.id),0)/list.length*100):0;
+      // A pastor is also a person who attends. If they have no member record they
+      // cannot be marked present, so their livestream name keeps landing in guests.
+      const linked=p.memberId?I.membersById[p.memberId]:null;
+      const byName=linked||I.snap.members.find(m=>this._nkey(m.name)===this._nkey(p.name))||null;
       return { name:p.name, count:list.length, showing:showing.length+'/'+list.length,
         rate:rate+'%', engaged:this._pct(showing.length,list.length), onEdit:()=>this.openEditPastor(pid),
+        onRoll:!!byName, rollLabel:byName?('On the attendance roll as '+byName.name):'Not on the attendance roll — cannot be marked present',
+        rollStyle:'font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:6px;background:'+(byName?'rgba(95,115,85,.16)':'rgba(194,104,63,.14)')+';color:'+(byName?'#4f6147':'#b25636'),
+        needsRoll:!byName, onAddToRoll:()=>this.openAddPastorToRoll(pid),
+        onOpenMember:byName?(()=>this.openMember(byName.id)):(()=>{}),
         showList:showing.sort((a,b)=>this._rate(b.id)-this._rate(a.id)).map(m=>({name:m.name,onOpen:()=>this.openMember(m.id)})),
-        quietList:quiet.sort((a,b)=>this._weeksSince(b.id)-this._weeksSince(a.id)).map(m=>({name:m.name,ago:(this._weeksSince(m.id)>=99?'never':this._weeksSince(m.id)+'w'),onOpen:()=>this.openMember(m.id)})) };
+        quietList:quiet.sort((a,b)=>this._consecutiveMisses(b.id)-this._consecutiveMisses(a.id)).map(m=>({name:m.name,ago:this._consecutiveMisses(m.id)+' missed',onOpen:()=>this.openMember(m.id)})) };
     });
     return { cards, onAdd:()=>this.openAddPastor() };
   }
@@ -1127,12 +1512,16 @@ class Component extends DCLogic {
 
     const defs=[];
 
+    const LIMIT=this.MISS_LIMIT||4;
+    const joinedVia=(m)=>m.joinedVia==='guest-promotion'?'Approved from guest':(m.joinedVia==='pastor'?'Pastor added to roll':(m.joinedVia==='manual'?'Added by admin':'Original database'));
+
     defs.push({ key:'roster', label:'Member Roster (full)', title:'Member Roster — Full Detail',
-      subtitle:'Every member with all recorded fields and attendance analytics',
-      columns:['S/N','Member Name','Phone Number','Email','Current Location','Member Status','Pastor Assigned','Household','Services Present','Services Recorded','Total Services','Attendance Rate %','Avg Minutes','Total Minutes','First Attendance','Last Attendance','Services Since Seen','Follow-ups Logged'],
-      rows:members.map((m,i)=>[i+1,m.name,m.phone||'',m.email||'',m.location||'',m.status,pname(m.pastorId),hname(m.householdId),
+      subtitle:'Every member with all recorded fields, how they joined, and attendance analytics',
+      columns:['S/N','Member Name','Also Known As','Phone Number','Email','Current Location','Member Status','Pastor Assigned','Household','Joined On','How They Joined','Guest Visits Before Joining','Approved By','Services Present','Services Recorded','Total Services','Attendance Rate %','Avg Minutes','Total Minutes','First Attendance','Last Attendance','Consecutive Services Missed','Needs Follow-Up','Follow-ups Logged'],
+      rows:members.map((m,i)=>[i+1,m.name,(m.aliases||[]).join(', '),m.phone||'',m.email||'',m.location||'',m.status,pname(m.pastorId),hname(m.householdId),
+        m.joinedAt||'',joinedVia(m),(m.guestVisits||[]).length,m.approvedBy||'',
         this._servicesPresent(m.id),recorded(m.id),total,Math.round(this._rate(m.id)*100),Math.round(this._avgDur(m.id)),totalMinutes(m.id),
-        firstSeen(m.id)||'',this._lastSeen(m.id)||'',this._weeksSince(m.id)>=99?'never seen':this._weeksSince(m.id),notesCount(m.id)]) });
+        firstSeen(m.id)||'',this._lastSeen(m.id)||'',this._consecutiveMisses(m.id),this._needsFollowup(m.id)?'YES':'',notesCount(m.id)]) });
 
     defs.push({ key:'register', label:'Attendance Register (grid)', title:'Attendance Register',
       subtitle:'Member × every recorded service. 1 = present, 0 = absent, blank = not recorded',
@@ -1169,11 +1558,36 @@ class Component extends DCLogic {
         this._ftReturned(f,I)?'Yes':'No', f.linkedMemberId?((I.membersById[f.linkedMemberId]&&I.membersById[f.linkedMemberId].name)||'Yes'):'']) });
 
     defs.push({ key:'followup', label:'Follow-Up Priority', title:'Follow-Up Priority List',
-      subtitle:'Members ranked by how overdue a visit is',
-      columns:['Member Name','Status','Pastor Assigned','Phone Number','Email','Last Attendance','Services Since Seen','Attendance Rate %','Follow-ups Logged'],
-      rows:I.snap.members.map(m=>({m,ws:this._weeksSince(m.id),sp:this._servicesPresent(m.id)})).sort((a,b)=>b.ws-a.ws).map(({m,ws,sp})=>[
+      subtitle:'KRE standard: needs follow-up after '+LIMIT+' consecutive services missed',
+      columns:['Member Name','Status','Pastor Assigned','Phone Number','Email','Last Attendance','Consecutive Services Missed','Needs Follow-Up','Attendance Rate %','Follow-ups Logged'],
+      rows:I.snap.members.map(m=>({m,miss:this._consecutiveMisses(m.id),sp:this._servicesPresent(m.id)}))
+        .sort((a,b)=>b.miss-a.miss||a.m.name.localeCompare(b.m.name)).map(({m,miss,sp})=>[
         m.name,m.status,pname(m.pastorId),m.phone||'',m.email||'',this._lastSeen(m.id)||'',
-        sp===0?'never seen':ws,Math.round(this._rate(m.id)*100),notesCount(m.id)]) });
+        miss,miss>=LIMIT?'YES':'',Math.round(this._rate(m.id)*100),notesCount(m.id)]) });
+
+    // Guest pipeline: every guest, their streak, and where they stand.
+    const gs=this._guestStats(I);
+    defs.push({ key:'candidates', label:'Guest Streaks & Candidates', title:'Guest Streaks & Membership Candidates',
+      subtitle:'A guest becomes a membership candidate after '+gs.need+' consecutive Sundays',
+      columns:['Guest Name','Total Visits','Longest Streak','Current Streak','Streak Needed','Still Coming','Status','Matched Member','First Visit','Last Visit','All Visit Dates','Decision','Decided By','Decided On'],
+      rows:gs.all.map(g=>{
+        const dv=g.decision&&g.decision.decision;
+        const status=dv==='linked'?'Linked to a member':(g.existingMember?'Already on the roll'
+          :(dv==='approved'?'Approved':((dv==='dismissed'||dv==='platform')?'Set aside'
+          :((g.currentStreak>=gs.need&&g.stillComing)?'READY TO APPROVE'
+          :(g.bestStreak>=gs.need?'Streak ended earlier'
+          :(g.stillComing?'On watch':'Visited, not currently attending'))))));
+        return [g.name,g.count,g.bestStreak,g.currentStreak,gs.need,g.stillComing?'Yes':'',status,
+          g.existingMember?g.existingMember.name:((g.decision&&g.decision.memberId&&(I.membersById[g.decision.memberId]||{}).name)||''),g.firstVisit||'',g.lastVisit||'',(g.visits||[]).join(', '),
+          g.decision?g.decision.decision:'',g.decision?(g.decision.decidedBy||''):'',g.decision?String(g.decision.decidedAt||'').slice(0,10):'']; }) });
+
+    const promoted=I.snap.members.filter(m=>m.joinedVia==='guest-promotion')
+      .sort((a,b)=>(b.joinedAt||'').localeCompare(a.joinedAt||''));
+    defs.push({ key:'newmembers', label:'New Members', title:'New Members — Approved from Guests',
+      subtitle:'Guests who reached '+gs.need+' consecutive Sundays and were approved onto the roll',
+      columns:['Member Name','Joined On','Approved By','Guest Visits Before Joining','First Seen As Guest','Guest Visit Dates','Status','Pastor Assigned','Phone Number','Email'],
+      rows:promoted.map(m=>[m.name,m.joinedAt||'',m.approvedBy||'',(m.guestVisits||[]).length,m.firstSeenAsGuest||'',
+        (m.guestVisits||[]).join(', '),m.status,pname(m.pastorId),m.phone||'',m.email||'']) });
 
     const noteRows=(I.snap.notes||[]).slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).map(n=>[
       n.date||'',(I.membersById[n.memberId]&&I.membersById[n.memberId].name)||n.memberId,n.type||'note',n.text||'',n.by||'']);
@@ -1197,12 +1611,13 @@ class Component extends DCLogic {
     const pGroups={}; I.snap.members.forEach(m=>{ if(m.pastorId)(pGroups[m.pastorId]=pGroups[m.pastorId]||[]).push(m); });
     defs.push({ key:'pastors', label:'Pastor Summary', title:'Pastor Engagement Summary',
       subtitle:'How each pastor’s flock is engaging',
-      columns:['Pastor','Members Assigned','Showing Up','Needs Follow-Up','Avg Attendance Rate %'],
+      columns:['Pastor','On Attendance Roll As','Members Assigned','Showing Up','Needs Follow-Up','Avg Attendance Rate %'],
       rows:(I.snap.pastors||[]).slice().sort((a,b)=>a.name.localeCompare(b.name)).map(p=>{
         const list=pGroups[p.id]||[];
-        const showing=list.filter(m=>this._weeksSince(m.id)<3&&this._servicesPresent(m.id)>0).length;
+        const showing=list.filter(m=>!this._needsFollowup(m.id)).length;
         const rate=list.length?Math.round(list.reduce((a,m)=>a+this._rate(m.id),0)/list.length*100):0;
-        return [p.name,list.length,showing,list.length-showing,rate]; }) });
+        const own=(p.memberId&&I.membersById[p.memberId])||I.snap.members.find(m=>this._nkey(m.name)===this._nkey(p.name));
+        return [p.name,own?own.name:'NOT ON ROLL',list.length,showing,list.length-showing,rate]; }) });
 
     return defs;
   }
@@ -1276,6 +1691,125 @@ class Component extends DCLogic {
       onCategory:(e)=>this.setState({giveCategory:e.target.value}), onKey:(e)=>{ if(e.key==='Enter')this._addGiving(); }, onAdd:()=>this._addGiving() };
   }
 
+  /* ---------- membership approvals vm ---------- */
+  _vmApprovals(I){
+    const gs=this._guestStats(I), need=gs.need;
+    const chip=(txt,bg,fg)=>'font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:3px 8px;border-radius:6px;background:'+bg+';color:'+fg;
+    const promoted=I.snap.members.filter(m=>m.joinedVia==='guest-promotion')
+      .sort((a,b)=>(b.joinedAt||'').localeCompare(a.joinedAt||''));
+    const cards=[
+      ['Ready to Approve',gs.candidates.length,need+' in a row & still coming','#5f7355'],
+      ['Earlier Streaks',gs.historic.length,'hit '+need+' but stopped coming','#cb9a2f'],
+      ['Approved from Guests',promoted.length,'now on the roll','#5e2a87'],
+      ['Already on the Roll',gs.alreadyMembers.length,'matched to a member','#9a8d86'],
+    ].map(c=>({k:c[0],v:c[1],d:c[2],style:this._statCard(c[3])}));
+
+    const row=(g)=>({
+      name:g.name, count:g.count, streak:g.bestStreak+' / '+need,
+      firstVisit:this._fmtFull(g.firstVisit), lastVisit:this._fmtFull(g.lastVisit),
+      visitList:(g.visits||[]).map(d=>this._fmt(d)).join(', '),
+      ready:g.bestStreak>=need,
+      badge: g.bestStreak>=need ? chip('ready','rgba(95,115,85,.18)','#5f7355') : chip(g.bestStreak+' of '+need,'rgba(203,154,47,.18)','#a47d1f'),
+      onApprove:()=>this.openApproveGuest(g.key),
+      onDismiss:()=>this._dismissGuest(g.name),
+      onLink:()=>this.openLinkGuest(g.key),
+    });
+    return {
+      cards, need,
+      candidates:gs.candidates.map(row), hasCandidates:gs.candidates.length>0, noCandidates:gs.candidates.length===0,
+      historic:gs.historic.slice().sort((a,b)=>(b.lastVisit||'').localeCompare(a.lastVisit||'')).map(row),
+      hasHistoric:gs.historic.length>0, historicCount:gs.historic.length,
+      watch:gs.watch.slice().filter(g=>g.stillComing).sort((a,b)=>b.bestStreak-a.bestStreak||(b.lastVisit||'').localeCompare(a.lastVisit||'')).map(row),
+      hasWatch:gs.watch.filter(g=>g.stillComing).length>0,
+      matchedCount:gs.alreadyMembers.length,
+      dismissed:gs.dismissed.map(g=>({ name:g.name, count:g.count, streak:g.bestStreak+' / '+need,
+        lastVisit:this._fmtFull(g.lastVisit), onRestore:()=>this._restoreGuest(g.name) })),
+      hasDismissed:gs.dismissed.length>0,
+      linked:gs.linked.map(g=>({ name:g.name, count:g.count,
+        memberName:((I.membersById[g.decision.memberId]||{}).name)||'—',
+        onRestore:()=>this._restoreGuest(g.name) })),
+      hasLinked:gs.linked.length>0,
+      promoted:promoted.map(m=>({ name:m.name, joinedAt:this._fmtFull(m.joinedAt),
+        priorVisits:(m.guestVisits||[]).length, approvedBy:m.approvedBy||'—', onOpen:()=>this.openMember(m.id) })),
+      hasPromoted:promoted.length>0,
+    };
+  }
+
+  openApproveGuest(key){
+    const gs=this._guestStats(this._idx());
+    const g=gs.all.find(x=>x.key===key); if(!g)return;
+    this.setState({ modal:{ type:'approveGuest', id:key },
+      form:{ name:g.name, phone:'', email:'', location:'', status:'Growing', pastorId:'', householdId:'',
+        joinedAt:this._todayISO(), visits:g.visits.slice() }, formErr:'', dupWarn:null, dupAck:false });
+  }
+  /* Near-miss name check: "Cindy Amoak" vs member "Cindy Amoako" shares only one
+   * whole word, so the roll matcher won't catch it. Compare word-by-word with a
+   * small edit distance so the admin is warned before a second profile is created. */
+  _editDistance(a,b){
+    if(a===b) return 0;
+    const m=a.length,n=b.length; if(!m||!n) return Math.max(m,n);
+    let prev=new Array(n+1),cur=new Array(n+1);
+    for(let j=0;j<=n;j++) prev[j]=j;
+    for(let i=1;i<=m;i++){
+      cur[0]=i;
+      for(let j=1;j<=n;j++){
+        cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
+      }
+      const t=prev; prev=cur; cur=t;
+    }
+    return prev[n];
+  }
+  _nearMatches(name){
+    const toks=s=>String(s||'').toLowerCase().replace(/[^a-z ]/g,' ').split(/\s+/).filter(t=>t.length>2);
+    const gt=toks(name); if(!gt.length) return [];
+    const out=[];
+    (this._idx().snap.members||[]).forEach(m=>{
+      const mt=toks(m.name); if(!mt.length) return;
+      let hits=0;
+      gt.forEach(g=>{
+        if(mt.some(t=>t===g
+          || this._editDistance(t,g)<=2
+          || (t.length>=5&&g.length>=5&&t.slice(0,5)===g.slice(0,5)))) hits++;
+      });
+      if(hits>=Math.min(2,gt.length)) out.push(m);
+    });
+    return out;
+  }
+
+  async _approveGuest(){
+    if(!this._canWrite())return;
+    const f=this.state.form, name=(f.name||'').trim();
+    if(!name){ this.setState({formErr:'Name cannot be empty.'}); return; }
+    const dup=this._idx().snap.members.find(m=>this._nkey(m.name)===this._nkey(name));
+    if(dup){ this.setState({formErr:'A member called “'+dup.name+'” already exists. Set this guest aside instead.'}); return; }
+    // Warn once about similar spellings, but let the admin proceed deliberately.
+    if(!this.state.dupAck){
+      const near=this._nearMatches(name);
+      if(near.length){ this.setState({ dupWarn:near.map(m=>m.name), formErr:'' }); return; }
+    }
+    const ok=await this._w('Membership approval',()=>this._db.promoteGuestToMember(
+      this.state.modal.id ? (this._guestStats(this._idx()).all.find(g=>g.key===this.state.modal.id)||{}).name || name : name,
+      f.visits||[],
+      { name, phone:(f.phone||'').trim()||null, email:(f.email||'').trim()||null, location:(f.location||'').trim()||null,
+        status:f.status||'Growing', pastorId:f.pastorId||null, householdId:f.householdId||null, joinedAt:f.joinedAt||this._todayISO() },
+      this.state.userEmail||null));
+    if(ok){ this.closeModal(); this.setState({screen:'members'}); this.toast(name+' is now a member'); }
+  }
+  async _dismissGuest(name){ if(!this._canWrite())return; if(await this._w('Set aside',()=>this._db.setGuestDecision(name,'dismissed',this.state.userEmail||null))) this.toast('Kept as a guest'); }
+  async _linkGuest(key,memberId){
+    if(!this._canWrite())return;
+    const g=this._guestStats(this._idx()).all.find(x=>x.key===key); if(!g)return;
+    const m=this._idx().membersById[memberId]; if(!m)return;
+    if(await this._w('Link to member',()=>this._db.linkGuestToMember(g.name,g.visits,memberId,this.state.userEmail||null))){
+      this.closeModal(); this.toast('“'+g.name+'” linked to '+m.name);
+    }
+  }
+  openLinkGuest(key){
+    const g=this._guestStats(this._idx()).all.find(x=>x.key===key); if(!g)return;
+    this.setState({ modal:{ type:'linkGuest', id:key }, form:{ memberId:'', search:'' }, formErr:'' });
+  }
+  async _restoreGuest(name){ if(!this._canWrite())return; if(await this._w('Restore',()=>this._db.setGuestDecision(name,null,this.state.userEmail||null))) this.toast('Back in the approvals list'); }
+
   /* ---------- team vm ---------- */
   _vmTeam(I){
     const roles=['admin','editor','viewer'];
@@ -1305,11 +1839,42 @@ class Component extends DCLogic {
   openFirstTimer(id){ const f=this._idx().snap.firstTimers.find(x=>x.id===id); this.setState({ modal:{ type:'ftForm', id }, form:{ name:f.name,invitedBy:f.invitedBy||'',contacts:f.contacts||'',firstVisit:f.firstVisit||'' }, formErr:'' }); }
   openAddPastor(){ this.setState({ modal:{ type:'pastorForm', id:null }, form:{ name:'' }, formErr:'' }); }
   openEditPastor(id){ const p=this._idx().pastorsById[id]; this.setState({ modal:{ type:'pastorForm', id }, form:{ name:p.name }, formErr:'' }); }
+  openAddPastorToRoll(pid){
+    const p=this._idx().pastorsById[pid]; if(!p)return;
+    // Nothing is pre-ticked: the admin chooses which livestream spellings are really
+    // this pastor, since surnames are shared across the congregation.
+    this.setState({ modal:{ type:'pastorToRoll', id:pid },
+      form:{ name:p.name, phone:'', email:'', location:'', status:'Pastor', pastorId:pid,
+        aliasKeys:[], joinedAt:this._todayISO() }, formErr:'' });
+  }
+  async _savePastorToRoll(){
+    if(!this._canWrite())return;
+    const f=this.state.form, pid=this.state.modal.id;
+    const name=(f.name||'').trim(); if(!name){ this.setState({formErr:'Name cannot be empty.'}); return; }
+    const gs=this._guestStats(this._idx());
+    const picked=(f.aliasKeys||[]).map(k=>gs.all.find(g=>g.key===k)).filter(Boolean);
+    const aliases=picked.map(g=>g.name);
+    const visits=[]; picked.forEach(g=>(g.visits||[]).forEach(d=>{ if(visits.indexOf(d)<0)visits.push(d); }));
+    visits.sort();
+    const created=await this._w('Pastor on roll',()=>this._db.addMember({ name, phone:(f.phone||'').trim()||null,
+      email:(f.email||'').trim()||null, location:(f.location||'').trim()||null, status:'Pastor', pastorId:pid,
+      aliases, joinedAt:f.joinedAt||this._todayISO(), joinedVia:'pastor', guestVisits:visits,
+      firstSeenAsGuest:visits[0]||null, approvedBy:this.state.userEmail||null }));
+    if(!created) return;
+    // Link the pastor record, back-fill their attendance, and clear those livestream
+    // names from the guest rolls so nobody is counted twice.
+    const mem=(this._idx().snap.members.find(m=>this._nkey(m.name)===this._nkey(name))||{}).id;
+    if(mem){
+      await this._w('Link pastor',()=>this._db.updatePastor(pid,{memberId:mem}));
+      for(const g of picked){ await this._w('Move '+g.name,()=>this._db.linkGuestToMember(g.name,g.visits,mem,this.state.userEmail||null)); }
+    }
+    this.closeModal(); this.setState({screen:'pastors'}); this.toast(name+' is now on the attendance roll');
+  }
   openAddHousehold(){ this.setState({ modal:{ type:'householdForm', id:null }, form:{ name:'' }, formErr:'' }); }
   openEditHousehold(id){ const h=this._idx().householdsById[id]; this.setState({ modal:{ type:'householdForm', id }, form:{ name:h.name }, formErr:'' }); }
   async _saveHouseholdForm(){ if(!this._canWrite())return; const name=(this.state.form.name||'').trim(); if(!name){ this.setState({formErr:'Name cannot be empty.'}); return; } if(this.state.modal.id){ if(!await this._w('Household',()=>this._db.updateHousehold(this.state.modal.id,{name})))return; } else { if(!await this._w('New household',()=>this._db.addHousehold(name)))return; } this.closeModal(); this.setState({screen:'households'}); this.toast('Saved'); }
   async _deleteHousehold(){ if(!this._canDelete())return; const id=this.state.modal.id; if(!id)return; if(await this._w('Household delete',()=>this._db.deleteHousehold(id))){ this.closeModal(); this.toast('Household removed'); } }
-  closeModal(){ this.setState({ modal:null, formErr:'' }); }
+  closeModal(){ this.setState({ modal:null, formErr:'', dupWarn:null, dupAck:false }); }
   _setForm(k,v){ this.setState({ form:Object.assign({},this.state.form,{[k]:v}) }); }
 
   async _saveStatus(id,status){ if(!this._canWrite())return; if(await this._w('Status',()=>this._db.updateMember(id,{status}))) this.toast('Status updated'); }
@@ -1352,7 +1917,7 @@ class Component extends DCLogic {
     const pastorOpts=[{value:'',label:'— none —'}].concat(I.snap.pastors.map(p=>({value:p.id,label:p.name})));
     const householdOpts=[{value:'',label:'— none —'}].concat((I.snap.households||[]).slice().sort((a,b)=>a.name.localeCompare(b.name)).map(h=>({value:h.id,label:h.name})));
     const out={ modalOpen:true, modal:{ onClose:()=>this.closeModal(), onBackdrop:(e)=>{ if(e.target===e.currentTarget)this.closeModal(); }, statusOpts, pastorOpts, householdOpts,
-      isProfile:false, isMemberForm:false, isFtForm:false, isPastorForm:false, isHouseholdForm:false, canEdit:this.state.role!=='viewer', canAdmin:this.state.role==='admin', hasError:!!this.state.formErr, error:this.state.formErr } };
+      isProfile:false, isMemberForm:false, isFtForm:false, isPastorForm:false, isHouseholdForm:false, isApproveGuest:false, isLinkGuest:false, isPastorToRoll:false, canEdit:this.state.role!=='viewer', canAdmin:this.state.role==='admin', hasError:!!this.state.formErr, error:this.state.formErr } };
     const f=this.state.form;
 
     if(m.type==='profile'){
@@ -1361,7 +1926,11 @@ class Component extends DCLogic {
       const notes=(I.notesByMember[mem.id]||[]).map(n=>({ date:this._fmtFull(n.date), type:(n.type||'note'), text:n.text, by:n.by||'', onDelete:()=>this._deleteNote(n.id) }));
       Object.assign(out.modal,{ isProfile:true, avatar:mem.name.trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase(), title:mem.name, subtitle:mem.status,
         stats:[{k:'Services',v:sp+'/'+total},{k:'Attend. Rate',v:Math.round(rate*100)+'%'},{k:'Avg. Minutes',v:Math.round(ad)},{k:'Last Seen',v:this._fmt(this._lastSeen(mem.id))}],
-        bio:[{l:'Assigned Pastor',r:(I.pastorsById[mem.pastorId]&&I.pastorsById[mem.pastorId].name)||'—'},{l:'Household',r:(I.householdsById[mem.householdId]&&I.householdsById[mem.householdId].name)||'—'},{l:'Phone',r:mem.phone||'—'},{l:'Email',r:mem.email||'—'},{l:'Location',r:mem.location||'—'},{l:'Last Attendance',r:this._fmtFull(this._lastSeen(mem.id))}],
+        bio:[{l:'Assigned Pastor',r:(I.pastorsById[mem.pastorId]&&I.pastorsById[mem.pastorId].name)||'—'},{l:'Household',r:(I.householdsById[mem.householdId]&&I.householdsById[mem.householdId].name)||'—'},{l:'Phone',r:mem.phone||'—'},{l:'Email',r:mem.email||'—'},{l:'Location',r:mem.location||'—'},
+          {l:'Joined',r:mem.joinedAt?this._fmtFull(mem.joinedAt):'—'},
+          {l:'How they joined',r:mem.joinedVia==='guest-promotion'?('Approved from guest ('+((mem.guestVisits||[]).length)+' visits)'):(mem.joinedVia==='manual'?'Added by an admin':'From the original database')},
+          {l:'Consecutive services missed',r:String(this._consecutiveMisses(mem.id))},
+          {l:'Last Attendance',r:this._fmtFull(this._lastSeen(mem.id))}],
         status:mem.status, pastorId:mem.pastorId||'', onStatus:(e)=>this._saveStatus(mem.id,e.target.value), onPastor:(e)=>this._savePastor(mem.id,e.target.value), onEdit:()=>this.openEditMember(mem.id),
         notes, hasNotes:notes.length>0, noteText:this.state.noteText, noteType:this.state.noteType,
         noteTypeOpts:['call','visit','message','note'].map(t=>({value:t,label:t.charAt(0).toUpperCase()+t.slice(1)})),
@@ -1385,6 +1954,56 @@ class Component extends DCLogic {
         fName:f.name||'', onF_name:(e)=>this._setForm('name',e.target.value),
         saveLabel:m.id?'Save changes':'Add Pastor', onSave:()=>this._savePastorForm(), onCancel:()=>this.closeModal(),
         canDelete:!!m.id, onDelete:()=>this._deletePastor() });
+    } else if(m.type==='approveGuest'){
+      const visits=f.visits||[];
+      Object.assign(out.modal,{ isApproveGuest:true, avatar:'✔', title:'Approve as Member',
+        subtitle:'Attended '+visits.length+' Sunday'+(visits.length===1?'':'s')+' as a guest',
+        fName:f.name||'', fPhone:f.phone||'', fEmail:f.email||'', fLocation:f.location||'',
+        fStatus:f.status||'Growing', fPastorId:f.pastorId||'', fHouseholdId:f.householdId||'', fJoinedAt:f.joinedAt||this._todayISO(),
+        visitList:visits.map(d=>this._fmtFull(d)).join(' · '), visitCount:visits.length,
+        hasDupWarn:!!(this.state.dupWarn&&this.state.dupWarn.length),
+        dupWarnNames:(this.state.dupWarn||[]).join(', '),
+        dupWarnText:((this.state.dupWarn||[]).length===1?'A member with a very similar name is already on the roll: ':'Members with very similar names are already on the roll: '),
+        onDupProceed:()=>{ this.setState({dupAck:true}, ()=>this._approveGuest()); },
+        onDupCancel:()=>this.closeModal(),
+        onF_name:(e)=>this._setForm('name',e.target.value), onF_phone:(e)=>this._setForm('phone',e.target.value),
+        onF_email:(e)=>this._setForm('email',e.target.value), onF_location:(e)=>this._setForm('location',e.target.value),
+        onF_status:(e)=>this._setForm('status',e.target.value), onF_pastorId:(e)=>this._setForm('pastorId',e.target.value),
+        onF_householdId:(e)=>this._setForm('householdId',e.target.value), onF_joinedAt:(e)=>this._setForm('joinedAt',e.target.value),
+        saveLabel:'Approve as member', onSave:()=>this._approveGuest(), onCancel:()=>this.closeModal() });
+    } else if(m.type==='linkGuest'){
+      const g=this._guestStats(I).all.find(x=>x.key===m.id)||{name:'',visits:[]};
+      const q=(f.search||'').toLowerCase();
+      let opts=I.snap.members.slice().sort((a,b)=>a.name.localeCompare(b.name));
+      if(q) opts=opts.filter(x=>x.name.toLowerCase().indexOf(q)>=0);
+      const near=this._nearMatches(g.name).map(x=>x.id);
+      opts.sort((a,b)=>(near.indexOf(b.id)>=0?1:0)-(near.indexOf(a.id)>=0?1:0));
+      Object.assign(out.modal,{ isLinkGuest:true, avatar:'⇄', title:'Same Person as a Member',
+        subtitle:'“'+g.name+'” — '+(g.visits||[]).length+' guest Sunday'+((g.visits||[]).length===1?'':'s'),
+        guestName:g.name, visitList:(g.visits||[]).map(d=>this._fmtFull(d)).join(' · '),
+        search:f.search||'', onSearch:(e)=>this._setForm('search',e.target.value),
+        memberOpts:opts.slice(0,60).map(x=>({ label:x.name+(near.indexOf(x.id)>=0?'  (likely match)':''), value:x.id,
+          style:'display:flex;justify-content:space-between;gap:10px;width:100%;text-align:left;font-size:13.5px;font-weight:500;padding:9px 12px;border-radius:9px;border:1.5px solid '+(near.indexOf(x.id)>=0?'#ecc868':'#e7dcc9')+';background:#fffdfa;color:#2c2233;cursor:pointer',
+          onPick:()=>this._linkGuest(m.id,x.id) })),
+        onCancel:()=>this.closeModal() });
+    } else if(m.type==='pastorToRoll'){
+      const gs=this._guestStats(I);
+      const picked=f.aliasKeys||[];
+      Object.assign(out.modal,{ isPastorToRoll:true, avatar:'✚', title:'Add Pastor to Attendance Roll',
+        subtitle:'So they can be marked present like everyone else',
+        fName:f.name||'', fPhone:f.phone||'', fEmail:f.email||'', fLocation:f.location||'', fJoinedAt:f.joinedAt||this._todayISO(),
+        onF_name:(e)=>this._setForm('name',e.target.value), onF_phone:(e)=>this._setForm('phone',e.target.value),
+        onF_email:(e)=>this._setForm('email',e.target.value), onF_location:(e)=>this._setForm('location',e.target.value),
+        onF_joinedAt:(e)=>this._setForm('joinedAt',e.target.value),
+        aliasOpts:gs.all.filter(g=>picked.indexOf(g.key)>=0||this._nearMatches(g.name).length===0)
+          .filter(g=>{ const gt=String(g.name||'').toLowerCase(); const pt=String(f.name||'').toLowerCase().split(/\s+/).filter(t=>t.length>2);
+            return pt.some(t=>gt.indexOf(t)>=0); })
+          .slice(0,12).map(g=>({ name:g.name, visits:(g.visits||[]).length, on:picked.indexOf(g.key)>=0,
+            style:'display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:9px;border:1.5px solid '+(picked.indexOf(g.key)>=0?'#5f7355':'#e7dcc9')+';background:'+(picked.indexOf(g.key)>=0?'#f3f7f4':'#fffdfa')+';cursor:pointer;font-size:13px',
+            glyph:picked.indexOf(g.key)>=0?'✓':'',
+            onToggle:()=>{ const arr=picked.slice(); const i=arr.indexOf(g.key); if(i>=0)arr.splice(i,1); else arr.push(g.key); this._setForm('aliasKeys',arr); } })),
+        pickedCount:picked.length,
+        saveLabel:'Add to roll', onSave:()=>this._savePastorToRoll(), onCancel:()=>this.closeModal() });
     } else if(m.type==='householdForm'){
       Object.assign(out.modal,{ isPastorForm:false, isHouseholdForm:true, avatar:m.id?'✎':'⌂', title:m.id?'Edit Household':'Add Household', subtitle:m.id?'Rename this family/household':'Create a family / household',
         fName:f.name||'', onF_name:(e)=>this._setForm('name',e.target.value),

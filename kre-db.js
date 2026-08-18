@@ -23,7 +23,12 @@
  * ========================================================================== */
 
 const LS_KEY = 'kre_db_v1';
-const STATUSES = ['Growing', 'Active', 'Worker', 'Covenant', 'Inactive', 'Drifting', 'Unclassified'];
+const STATUSES = ['Growing', 'Active', 'Worker', 'Covenant', 'Pastor', 'Inactive', 'Drifting', 'Unclassified'];
+// KRE rules of thumb, in one place so the app and the reports always agree.
+const GUEST_STREAK_FOR_MEMBERSHIP = 3;   // consecutive Sundays as a guest -> candidate
+const MISSES_FOR_FOLLOWUP = 4;           // consecutive services missed -> needs follow-up
+// Normalised name key: how we tell "Ama Serwaa " and "ama serwaa" are one person.
+function nameKey(s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, ''); }
 // The church owner — always treated as admin (bootstraps the permission system).
 // To hand ownership over, change this here AND in firestore.rules.
 const OWNER_EMAIL = 'jeffnathan2@gmail.com';
@@ -55,11 +60,12 @@ class LocalBackend {
         households: seed.households || [],
         notes: seed.notes || [],
         giving: seed.giving || [],
+        guestDecisions: seed.guestDecisions || [],
       };
       this._persist();
     }
     // ensure new collections exist on older saved snapshots
-    ['households','notes','giving'].forEach(k => { if (!this.state[k]) this.state[k] = []; });
+    ['households','notes','giving','guestDecisions'].forEach(k => { if (!this.state[k]) this.state[k] = []; });
     return this.snapshot();
   }
 
@@ -73,7 +79,11 @@ class LocalBackend {
   /* members */
   async addMember(m) {
     const rec = { id: uid('m'), name: m.name, phone: m.phone || null, email: m.email || null, location: m.location || null,
-      status: m.status || 'Growing', pastorId: m.pastorId || null, householdId: m.householdId || null, source: 'added' };
+      status: m.status || 'Growing', pastorId: m.pastorId || null, householdId: m.householdId || null,
+      aliases: m.aliases || [],
+      source: m.source || 'added', joinedAt: m.joinedAt || new Date().toISOString().slice(0, 10),
+      joinedVia: m.joinedVia || 'manual', guestVisits: m.guestVisits || [], firstSeenAsGuest: m.firstSeenAsGuest || null,
+      approvedBy: m.approvedBy || null };
     this.state.members.push(rec); this._persist(); return rec;
   }
   async updateMember(id, patch) {
@@ -163,6 +173,72 @@ class LocalBackend {
   /* users (local mode is single-admin; no-ops that keep the API shape) */
   async setUserRole() { return null; }
   async removeUser() { return null; }
+
+  /* ---- guest -> member promotion -------------------------------------- *
+   * Moves a guest onto the roll WITHOUT losing anything:
+   *   1. creates the member (records joinedAt + the guest visits they came from)
+   *   2. back-fills an attendance record for every Sunday they attended as a guest
+   *   3. removes that name from those guestRolls, so the same person is not counted
+   *      twice (their presence simply moves from the guest column to the roll)
+   *   4. writes a decision record, so the approval itself is auditable
+   * Every headcount therefore stays exactly the same. */
+  async promoteGuestToMember(guestName, visitDates, memberData, by) {
+    const member = await this.addMember(Object.assign({}, memberData, {
+      name: memberData.name || guestName, source: 'guest-promotion', joinedVia: 'guest-promotion',
+      guestVisits: (visitDates || []).slice(), firstSeenAsGuest: (visitDates || [])[0] || null, approvedBy: by || null
+    }));
+    (visitDates || []).forEach(d => {
+      let a = this.state.attendance.find(x => x.memberId === member.id && x.date === d);
+      if (!a) this.state.attendance.push({ memberId: member.id, date: d, present: true, minutes: null });
+      else a.present = true;
+    });
+    const key = nameKey(guestName);
+    this.state.services.forEach(s => {
+      if (!s.guestRoll || !s.guestRoll.length) return;
+      const kept = s.guestRoll.filter(g => nameKey(g) !== key);
+      if (kept.length !== s.guestRoll.length) s.guestRoll = kept;
+    });
+    this.state.guestDecisions = this.state.guestDecisions || [];
+    this.state.guestDecisions = this.state.guestDecisions.filter(d => d.id !== key);
+    this.state.guestDecisions.push({ id: key, name: guestName, decision: 'approved', memberId: member.id,
+      visits: (visitDates || []).slice(), decidedAt: new Date().toISOString(), decidedBy: by || null });
+    this._persist();
+    return member;
+  }
+
+  async setGuestDecision(guestName, decision, by) {
+    const key = nameKey(guestName);
+    this.state.guestDecisions = (this.state.guestDecisions || []).filter(d => d.id !== key);
+    if (decision) this.state.guestDecisions.push({ id: key, name: guestName, decision,
+      decidedAt: new Date().toISOString(), decidedBy: by || null });
+    this._persist();
+  }
+
+  /* ---- guest is actually an existing member (a spelling variant) ---------- *
+   * Same no-loss mechanics as a promotion, but instead of creating a person we
+   * record the spelling as an alias on the member they already are, move their
+   * guest Sundays onto their attendance, and take the name out of the guest rolls. */
+  async linkGuestToMember(guestName, visitDates, memberId, by) {
+    const m = this.state.members.find(x => x.id === memberId); if (!m) return null;
+    m.aliases = m.aliases || [];
+    if (!m.aliases.some(a => nameKey(a) === nameKey(guestName))) m.aliases.push(guestName);
+    (visitDates || []).forEach(d => {
+      const a = this.state.attendance.find(x => x.memberId === memberId && x.date === d);
+      if (!a) this.state.attendance.push({ memberId, date: d, present: true, minutes: null });
+      else a.present = true;
+    });
+    const key = nameKey(guestName);
+    this.state.services.forEach(s => {
+      if (!s.guestRoll || !s.guestRoll.length) return;
+      const kept = s.guestRoll.filter(g => nameKey(g) !== key);
+      if (kept.length !== s.guestRoll.length) s.guestRoll = kept;
+    });
+    this.state.guestDecisions = (this.state.guestDecisions || []).filter(d => d.id !== key);
+    this.state.guestDecisions.push({ id: key, name: guestName, decision: 'linked', memberId,
+      visits: (visitDates || []).slice(), decidedAt: new Date().toISOString(), decidedBy: by || null });
+    this._persist();
+    return m;
+  }
 }
 
 /* ------------------------------------------------------------- FIREBASE --- */
@@ -174,7 +250,7 @@ class FirebaseBackend {
     this.userEmail = user ? user.email : null;
     this.roleError = null;
 
-    const cols = ['pastors', 'members', 'attendance', 'services', 'firstTimers', 'households', 'notes', 'giving', 'users'];
+    const cols = ['pastors', 'members', 'attendance', 'services', 'firstTimers', 'households', 'notes', 'giving', 'users', 'guestDecisions'];
     const out = {};
     await Promise.all(cols.map(async c => {
       try { const snap = await this.db.collection(c).get(); out[c] = snap.docs.map(d => Object.assign({ id: d.id }, d.data())); }
@@ -218,7 +294,11 @@ class FirebaseBackend {
 
   async addMember(m) {
     const rec = { name: m.name, phone: m.phone || null, email: m.email || null, location: m.location || null,
-      status: m.status || 'Growing', pastorId: m.pastorId || null, householdId: m.householdId || null, source: 'added' };
+      status: m.status || 'Growing', pastorId: m.pastorId || null, householdId: m.householdId || null,
+      aliases: m.aliases || [],
+      source: m.source || 'added', joinedAt: m.joinedAt || new Date().toISOString().slice(0, 10),
+      joinedVia: m.joinedVia || 'manual', guestVisits: m.guestVisits || [], firstSeenAsGuest: m.firstSeenAsGuest || null,
+      approvedBy: m.approvedBy || null };
     const ref = await this.db.collection('members').add(rec); return Object.assign({ id: ref.id }, rec);
   }
   async updateMember(id, patch) { await this.db.collection('members').doc(id).set(patch, { merge: true }); return Object.assign({ id }, patch); }
@@ -287,6 +367,90 @@ class FirebaseBackend {
     return { id, role };
   }
   async removeUser(emailOrId) { await this.db.collection('users').doc((emailOrId || '').toLowerCase()).delete(); }
+
+  /* ---- guest -> member promotion (see LocalBackend for the rationale) ---- *
+   * One batched write, so the member, their back-filled attendance, the trimmed
+   * guest rolls and the audit record either all land or none do. */
+  async promoteGuestToMember(guestName, visitDates, memberData, by) {
+    const batch = this.db.batch();
+    const memberRef = this.db.collection('members').doc();
+    const rec = { name: memberData.name || guestName, phone: memberData.phone || null, email: memberData.email || null,
+      location: memberData.location || null, status: memberData.status || 'Growing',
+      pastorId: memberData.pastorId || null, householdId: memberData.householdId || null,
+      source: 'guest-promotion', joinedAt: memberData.joinedAt || new Date().toISOString().slice(0, 10),
+      joinedVia: 'guest-promotion', guestVisits: (visitDates || []).slice(), aliases: memberData.aliases || [],
+      firstSeenAsGuest: (visitDates || [])[0] || null, approvedBy: by || null };
+    batch.set(memberRef, rec);
+
+    (visitDates || []).forEach(d => {
+      batch.set(this.db.collection('attendance').doc(memberRef.id + '_' + d),
+        { memberId: memberRef.id, date: d, present: true, minutes: null }, { merge: true });
+    });
+
+    const key = nameKey(guestName);
+    (this.state.services || []).forEach(s => {
+      const roll = s.guestRoll || [];
+      if (!roll.length) return;
+      const kept = roll.filter(g => nameKey(g) !== key);
+      if (kept.length !== roll.length) {
+        batch.set(this.db.collection('services').doc(s.id || s.date), { guestRoll: kept }, { merge: true });
+      }
+    });
+
+    // The member, their back-filled attendance and the trimmed guest rolls must all
+    // land together — that is the part that must never half-apply.
+    await batch.commit();
+
+    // The audit record is best-effort: once someone is on the roll they are matched
+    // to it and no longer show as a candidate, so a missing audit row cannot cause
+    // a double promotion. This keeps approvals working before the updated
+    // firestore.rules (which add guestDecisions) have been published.
+    try {
+      await this.db.collection('guestDecisions').doc(key).set({ name: guestName, decision: 'approved',
+        memberId: memberRef.id, visits: (visitDates || []).slice(),
+        decidedAt: new Date().toISOString(), decidedBy: by || null });
+    } catch (e) { console.warn('[KRE] approval recorded, audit row skipped (publish firestore.rules):', e && e.code); }
+
+    return Object.assign({ id: memberRef.id }, rec);
+  }
+
+  async setGuestDecision(guestName, decision, by) {
+    const key = nameKey(guestName);
+    const ref = this.db.collection('guestDecisions').doc(key);
+    if (!decision) { await ref.delete(); return; }
+    await ref.set({ name: guestName, decision, decidedAt: new Date().toISOString(), decidedBy: by || null });
+  }
+
+  /* guest turns out to be an existing member: record the spelling as an alias,
+   * move their guest Sundays onto that member, clear the name from guest rolls. */
+  async linkGuestToMember(guestName, visitDates, memberId, by) {
+    const batch = this.db.batch();
+    const key = nameKey(guestName);
+    const existing = (this.state.members || []).find(m => m.id === memberId) || {};
+    const aliases = (existing.aliases || []).slice();
+    if (!aliases.some(a => nameKey(a) === key)) aliases.push(guestName);
+    batch.set(this.db.collection('members').doc(memberId), { aliases }, { merge: true });
+
+    (visitDates || []).forEach(d => {
+      batch.set(this.db.collection('attendance').doc(memberId + '_' + d),
+        { memberId, date: d, present: true, minutes: null }, { merge: true });
+    });
+    (this.state.services || []).forEach(s => {
+      const roll = s.guestRoll || [];
+      if (!roll.length) return;
+      const kept = roll.filter(g => nameKey(g) !== key);
+      if (kept.length !== roll.length) {
+        batch.set(this.db.collection('services').doc(s.id || s.date), { guestRoll: kept }, { merge: true });
+      }
+    });
+    await batch.commit();
+
+    try {
+      await this.db.collection('guestDecisions').doc(key).set({ name: guestName, decision: 'linked',
+        memberId, visits: (visitDates || []).slice(), decidedAt: new Date().toISOString(), decidedBy: by || null });
+    } catch (e) { console.warn('[KRE] link saved, audit row skipped (publish firestore.rules):', e && e.code); }
+    return { id: memberId, aliases };
+  }
 }
 
 /* --------------------------------------------------------------- FACTORY -- */
@@ -320,4 +484,4 @@ export async function createDB(opts) {
   return be;
 }
 
-export { STATUSES };
+export { STATUSES, GUEST_STREAK_FOR_MEMBERSHIP, MISSES_FOR_FOLLOWUP, nameKey };
