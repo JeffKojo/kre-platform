@@ -149,6 +149,19 @@ Roles resolve by **email** (with backward compatibility for older uid-keyed reco
 ## Scheduled backups (recommended, ~2 min in the console)
 Firestore ▸ **Backups** ▸ *Create schedule* → daily, retention 7–14 days. (Requires the Blaze plan; inexpensive at this data size.)
 
+## Duplicate members
+
+The **Members** tab shows a *Possible Duplicates* panel when two records look like the same person (e.g. "Benjamin Assenso Boakye" / "Benjamin Asenso Boakye"). **Review & merge** (admins) shows both records side by side — pick the one to keep:
+
+- Attendance is combined; a Sunday recorded on both counts once, keeping the longer stay.
+- Blank phone / email / location / pastor / household on the kept record are filled from the other.
+- Follow-up notes, giving, first-timer links and pastor links move across.
+- The other name becomes an alias, so the roll and guest matching still recognise it; the merge is logged in `mergedFrom` (who, when) and shown on the profile and in the Member Roster report.
+
+**Not the same person** permanently stops a pair being suggested (stored as `notDuplicateOf`). A merge can also be started from any profile via **⇆ Merge duplicate**. No rules change is needed.
+
+**Nothing is lost, and every merge can be undone.** Before merging, the screen lists any details that differ (e.g. two phone numbers). The kept record's value stays on the profile and the other is saved in the merge history. Each merge stores a full copy of the removed record, its own attendance, and which notes/giving/links moved. **↶ Undo merge** on the kept member's profile (admins) restores both people exactly, leaving anything recorded since the merge in place, and marks them as different people so the pair isn't suggested again.
+
 ## Migration notes (what the cleanup did)
 
 - **98 members**: 86 from *Member Status* + 7 recovered from attendance rows that weren't on the roster.

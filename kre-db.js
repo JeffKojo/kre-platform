@@ -29,6 +29,95 @@ const GUEST_STREAK_FOR_MEMBERSHIP = 3;   // consecutive Sundays as a guest -> ca
 const MISSES_FOR_FOLLOWUP = 4;           // consecutive services missed -> needs follow-up
 // Normalised name key: how we tell "Ama Serwaa " and "ama serwaa" are one person.
 function nameKey(s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+/* ---- member merge plan (shared by both backends) ------------------------ *
+ * Folds `drop` into `keep` with NO data loss:
+ *  - attendance: same Sunday on both -> present if either was present, minutes =
+ *    the larger value (never summed, so one visit isn't counted twice)
+ *  - blank fields on keep are filled from drop; drop's name + aliases become aliases
+ *  - guest history unioned, earliest join date kept, merge recorded in mergedFrom
+ * Returns { keepPatch, attendance: [{date,present,minutes}] for keep }. */
+function planMerge(keep, drop, keepAtt, dropAtt, by) {
+  const byDate = {};
+  (keepAtt || []).forEach(a => { byDate[a.date] = { date: a.date, present: !!a.present, minutes: a.minutes == null ? null : a.minutes }; });
+  (dropAtt || []).forEach(a => {
+    const cur = byDate[a.date];
+    if (!cur) { byDate[a.date] = { date: a.date, present: !!a.present, minutes: a.minutes == null ? null : a.minutes }; return; }
+    cur.present = cur.present || !!a.present;
+    if (a.minutes != null && (cur.minutes == null || a.minutes > cur.minutes)) cur.minutes = a.minutes;
+  });
+  const aliases = (keep.aliases || []).slice();
+  [drop.name].concat(drop.aliases || []).forEach(n => {
+    if (n && nameKey(n) !== nameKey(keep.name) && !aliases.some(x => nameKey(x) === nameKey(n))) aliases.push(n);
+  });
+  const patch = { aliases };
+  ['phone', 'email', 'location', 'pastorId', 'householdId', 'firstSeenAsGuest', 'approvedBy'].forEach(f => {
+    if (!keep[f] && drop[f]) patch[f] = drop[f];
+  });
+  const gv = (keep.guestVisits || []).slice();
+  (drop.guestVisits || []).forEach(d => { if (gv.indexOf(d) < 0) gv.push(d); });
+  patch.guestVisits = gv.sort();
+  if (drop.joinedAt && (!keep.joinedAt || drop.joinedAt < keep.joinedAt)) patch.joinedAt = drop.joinedAt;
+  // Full snapshot of the removed record AND its own attendance, so nothing is
+  // ever unrecoverable: conflicting phone/email/location, its status, and exactly
+  // which Sundays it held are all kept in the merge history.
+  const snapshot = {};
+  Object.keys(drop).forEach(k => { if (k !== 'notDuplicateOf' && drop[k] !== undefined) snapshot[k] = drop[k]; });
+  const conflicts = {};
+  ['phone', 'email', 'location', 'pastorId', 'householdId', 'status'].forEach(f => {
+    if (keep[f] && drop[f] && String(keep[f]) !== String(drop[f])) conflicts[f] = drop[f];
+  });
+  // What the kept record looked like before, so Undo can restore it exactly.
+  const keepBefore = {};
+  ['aliases', 'guestVisits', 'joinedAt', 'phone', 'email', 'location', 'pastorId', 'householdId',
+    'firstSeenAsGuest', 'approvedBy', 'notDuplicateOf'].forEach(f => { keepBefore[f] = keep[f] === undefined ? null : keep[f]; });
+  patch.mergedFrom = (keep.mergedFrom || []).concat([{ id: drop.id, name: drop.name, status: drop.status || null,
+    at: new Date().toISOString(), by: by || null, record: snapshot, conflicts, keepBefore,
+    dropNotDuplicateOf: drop.notDuplicateOf || [],
+    keepAttendanceBefore: (keepAtt || []).map(a => ({ date: a.date, present: !!a.present, minutes: a.minutes == null ? null : a.minutes })),
+    attendance: (dropAtt || []).map(a => ({ date: a.date, present: !!a.present, minutes: a.minutes == null ? null : a.minutes })),
+    moved: {} }]);
+  // Keep both records' "not the same person" marks (minus each other).
+  const nd = (keep.notDuplicateOf || []).concat(drop.notDuplicateOf || [])
+    .filter((x, i, arr) => x !== drop.id && x !== keep.id && arr.indexOf(x) === i);
+  patch.notDuplicateOf = nd;
+  return { keepPatch: patch, attendance: Object.values(byDate) };
+}
+
+/* ---- undo plan: reverse one merge without losing marks made since ------- *
+ * Sundays that came ONLY from the removed record go back to it; Sundays both
+ * had are reset to the kept record's original values; anything recorded on the
+ * kept record after the merge is left untouched. */
+function planUnmerge(keep, entry, keepAttNow) {
+  const before = {}; (entry.keepAttendanceBefore || []).forEach(a => { before[a.date] = a; });
+  const fromDrop = {}; (entry.attendance || []).forEach(a => { fromDrop[a.date] = a; });
+  const keepWrites = [], keepDeletes = [];
+  (keepAttNow || []).forEach(a => {
+    if (!fromDrop[a.date]) return;
+    if (before[a.date]) keepWrites.push(before[a.date]); else keepDeletes.push(a.date);
+  });
+  const kb = entry.keepBefore || {};
+  const rec = entry.record || {};
+  const keepPatch = {};
+  // A field goes back only if it still holds what the merge put there; anything
+  // edited on the kept record since the merge is left as the user set it.
+  ['joinedAt', 'phone', 'email', 'location', 'pastorId', 'householdId', 'firstSeenAsGuest', 'approvedBy'].forEach(f => {
+    const was = kb[f] == null ? null : kb[f], now = keep[f] == null ? null : keep[f], fromDrop = rec[f] == null ? null : rec[f];
+    if (now !== was && now === fromDrop) keepPatch[f] = was;
+  });
+  const introduced = [entry.name].concat(rec.aliases || []).map(nameKey);
+  const beforeAliases = (kb.aliases || []).map(nameKey);
+  keepPatch.aliases = (keep.aliases || []).filter(a => introduced.indexOf(nameKey(a)) < 0 || beforeAliases.indexOf(nameKey(a)) >= 0);
+  const beforeGv = kb.guestVisits || [];
+  keepPatch.guestVisits = (keep.guestVisits || []).filter(d => beforeGv.indexOf(d) >= 0 || (rec.guestVisits || []).indexOf(d) < 0);
+  keepPatch.mergedFrom = (keep.mergedFrom || []).filter(x => !(x.id === entry.id && x.at === entry.at));
+  const restored = Object.assign({}, rec);
+  delete restored.id;
+  // After an undo they are known to be different people, so never re-suggest the pair.
+  restored.notDuplicateOf = (entry.dropNotDuplicateOf || []).concat([keep.id]);
+  keepPatch.notDuplicateOf = (keep.notDuplicateOf || []).filter(x => x !== entry.id).concat([entry.id]);
+  return { keepPatch, keepWrites, keepDeletes, restored, dropAttendance: entry.attendance || [] };
+}
 // The church owner — always treated as admin (bootstraps the permission system).
 // To hand ownership over, change this here AND in firestore.rules.
 const OWNER_EMAIL = 'jeffnathan2@gmail.com';
@@ -238,6 +327,49 @@ class LocalBackend {
       visits: (visitDates || []).slice(), decidedAt: new Date().toISOString(), decidedBy: by || null });
     this._persist();
     return m;
+  }
+
+  /* ---- merge two member records into one ---- */
+  async mergeMembers(keepId, dropId, by) {
+    const keep = this.state.members.find(x => x.id === keepId), drop = this.state.members.find(x => x.id === dropId);
+    if (!keep || !drop || keepId === dropId) return null;
+    const plan = planMerge(keep, drop, this.state.attendance.filter(a => a.memberId === keepId),
+      this.state.attendance.filter(a => a.memberId === dropId), by);
+    const entry = plan.keepPatch.mergedFrom[plan.keepPatch.mergedFrom.length - 1];
+    const mv = (arr, field) => (arr || []).filter(x => x[field] === dropId).map(x => { x[field] = keepId; return x.id; });
+    entry.moved = { notes: mv(this.state.notes, 'memberId'), giving: mv(this.state.giving, 'memberId'),
+      firstTimers: mv(this.state.firstTimers, 'linkedMemberId'), pastors: mv(this.state.pastors, 'memberId'),
+      guestDecisions: mv(this.state.guestDecisions, 'memberId') };
+    Object.assign(keep, plan.keepPatch);
+    this.state.attendance = this.state.attendance.filter(a => a.memberId !== keepId && a.memberId !== dropId)
+      .concat(plan.attendance.map(a => Object.assign({ memberId: keepId }, a)));
+    this.state.members.forEach(m => { if (m.notDuplicateOf) m.notDuplicateOf = m.notDuplicateOf.filter(x => x !== dropId); });
+    this.state.members = this.state.members.filter(m => m.id !== dropId);
+    this._persist();
+    return keep;
+  }
+  async unmergeMember(keepId, dropId, at) {
+    const keep = this.state.members.find(x => x.id === keepId); if (!keep) return null;
+    const entry = (keep.mergedFrom || []).find(x => x.id === dropId && (!at || x.at === at));
+    if (!entry || !entry.record) throw new Error('This merge has no undo record');
+    const plan = planUnmerge(keep, entry, this.state.attendance.filter(a => a.memberId === keepId));
+    this.state.members.push(Object.assign({ id: dropId }, plan.restored));
+    this.state.attendance = this.state.attendance.filter(a => !(a.memberId === keepId && (plan.keepDeletes.indexOf(a.date) >= 0 || plan.keepWrites.some(w => w.date === a.date))))
+      .concat(plan.keepWrites.map(a => Object.assign({ memberId: keepId }, a)))
+      .concat(plan.dropAttendance.map(a => Object.assign({ memberId: dropId }, a)));
+    const field = { notes: 'memberId', giving: 'memberId', firstTimers: 'linkedMemberId', pastors: 'memberId', guestDecisions: 'memberId' };
+    Object.keys(entry.moved || {}).forEach(col => (this.state[col] || []).forEach(x => {
+      if ((entry.moved[col] || []).indexOf(x.id) >= 0) x[field[col]] = dropId; }));
+    Object.assign(keep, plan.keepPatch);
+    this._persist();
+    return { id: dropId };
+  }
+  async markNotDuplicate(aId, bId) {
+    [[aId, bId], [bId, aId]].forEach(([x, y]) => {
+      const m = this.state.members.find(z => z.id === x); if (!m) return;
+      m.notDuplicateOf = m.notDuplicateOf || []; if (m.notDuplicateOf.indexOf(y) < 0) m.notDuplicateOf.push(y);
+    });
+    this._persist();
   }
 }
 
@@ -451,6 +583,67 @@ class FirebaseBackend {
     } catch (e) { console.warn('[KRE] link saved, audit row skipped (publish firestore.rules):', e && e.code); }
     return { id: memberId, aliases };
   }
+
+  /* ---- merge two member records into one (single atomic batch) ---- */
+  async mergeMembers(keepId, dropId, by) {
+    const S = this.state;
+    const keep = (S.members || []).find(x => x.id === keepId), drop = (S.members || []).find(x => x.id === dropId);
+    if (!keep || !drop || keepId === dropId) return null;
+    // Read attendance fresh from the server so nothing recorded on another device is missed.
+    const [ka, da] = await Promise.all([
+      this.db.collection('attendance').where('memberId', '==', keepId).get(),
+      this.db.collection('attendance').where('memberId', '==', dropId).get()]);
+    const plan = planMerge(keep, drop, ka.docs.map(d => d.data()), da.docs.map(d => d.data()), by);
+    const entry = plan.keepPatch.mergedFrom[plan.keepPatch.mergedFrom.length - 1];
+    const batch = this.db.batch();
+    const repoint = async (col, field) => {
+      const q = await this.db.collection(col).where(field, '==', dropId).get();
+      q.docs.forEach(d => batch.update(d.ref, { [field]: keepId }));
+      entry.moved[col] = q.docs.map(d => d.id);
+    };
+    await repoint('notes', 'memberId'); await repoint('giving', 'memberId');
+    await repoint('firstTimers', 'linkedMemberId'); await repoint('pastors', 'memberId');
+    try { await repoint('guestDecisions', 'memberId'); } catch (e) { entry.moved.guestDecisions = []; }
+    batch.set(this.db.collection('members').doc(keepId), plan.keepPatch, { merge: true });
+    plan.attendance.forEach(a => batch.set(this.db.collection('attendance').doc(keepId + '_' + a.date),
+      { memberId: keepId, date: a.date, present: a.present, minutes: a.minutes }, { merge: true }));
+    da.docs.forEach(d => batch.delete(d.ref));
+    (S.members || []).forEach(m => {
+      if (m.id !== dropId && m.id !== keepId && (m.notDuplicateOf || []).indexOf(dropId) >= 0)
+        batch.update(this.db.collection('members').doc(m.id), { notDuplicateOf: m.notDuplicateOf.filter(x => x !== dropId) });
+    });
+    batch.delete(this.db.collection('members').doc(dropId));
+    await batch.commit();
+    return Object.assign({ id: keepId }, keep, plan.keepPatch);
+  }
+  /* ---- undo a merge: bring the removed record back exactly ---- */
+  async unmergeMember(keepId, dropId, at) {
+    const keep = (this.state.members || []).find(x => x.id === keepId); if (!keep) return null;
+    const entry = (keep.mergedFrom || []).find(x => x.id === dropId && (!at || x.at === at));
+    if (!entry || !entry.record) throw new Error('This merge has no undo record');
+    const ka = await this.db.collection('attendance').where('memberId', '==', keepId).get();
+    const plan = planUnmerge(keep, entry, ka.docs.map(d => d.data()));
+    const batch = this.db.batch();
+    batch.set(this.db.collection('members').doc(dropId), plan.restored);
+    plan.dropAttendance.forEach(a => batch.set(this.db.collection('attendance').doc(dropId + '_' + a.date),
+      { memberId: dropId, date: a.date, present: a.present, minutes: a.minutes }));
+    plan.keepWrites.forEach(a => batch.set(this.db.collection('attendance').doc(keepId + '_' + a.date),
+      { memberId: keepId, date: a.date, present: a.present, minutes: a.minutes }));
+    plan.keepDeletes.forEach(d => batch.delete(this.db.collection('attendance').doc(keepId + '_' + d)));
+    const field = { notes: 'memberId', giving: 'memberId', firstTimers: 'linkedMemberId', pastors: 'memberId', guestDecisions: 'memberId' };
+    Object.keys(entry.moved || {}).forEach(col => (entry.moved[col] || []).forEach(id =>
+      batch.set(this.db.collection(col).doc(id), { [field[col]]: dropId }, { merge: true })));
+    batch.set(this.db.collection('members').doc(keepId), plan.keepPatch, { merge: true });
+    await batch.commit();
+    return { id: dropId };
+  }
+  async markNotDuplicate(aId, bId) {
+    const FV = this.fb.firestore.FieldValue;
+    const batch = this.db.batch();
+    batch.set(this.db.collection('members').doc(aId), { notDuplicateOf: FV.arrayUnion(bId) }, { merge: true });
+    batch.set(this.db.collection('members').doc(bId), { notDuplicateOf: FV.arrayUnion(aId) }, { merge: true });
+    await batch.commit();
+  }
 }
 
 /* --------------------------------------------------------------- FACTORY -- */
@@ -484,4 +677,4 @@ export async function createDB(opts) {
   return be;
 }
 
-export { STATUSES, GUEST_STREAK_FOR_MEMBERSHIP, MISSES_FOR_FOLLOWUP, nameKey };
+export { STATUSES, GUEST_STREAK_FOR_MEMBERSHIP, MISSES_FOR_FOLLOWUP, nameKey, planMerge, planUnmerge };

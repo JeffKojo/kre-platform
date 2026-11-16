@@ -408,6 +408,20 @@
       <!-- ---------- MEMBERS ---------- -->
       <sc-if value="{{ isMembers }}" hint-placeholder-val="{{ false }}">
         <p style="{{ ui.intro }}">Every member with their live classification. Click a name for the full profile; add, edit, reassign a pastor or change status — every change saves instantly.</p>
+        <sc-if value="{{ members.hasDups }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ ui.panel }};margin-bottom:16px;border-color:#e8cf9a;background:linear-gradient(160deg,#fffdf7,#fbf4e3)">
+            <div style="{{ ui.panelH }}"><h3 style="{{ ui.h3 }}">Possible Duplicates</h3><div style="{{ ui.muted }}">{{ members.dupCount }} · same person entered twice splits their attendance</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ members.dups }}" as="d" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;background:#fffdfa;border:1px solid #efe4cf;border-radius:10px">
+                  <div style="flex:1;min-width:240px;font-size:13.5px"><b>{{ d.a }}</b> <span style="color:#928697">({{ d.aSeen }} Sundays)</span> <span style="color:#a47d1f;margin:0 6px">⇆</span> <b>{{ d.b }}</b> <span style="color:#928697">({{ d.bSeen }} Sundays)</span></div>
+                  <button onClick="{{ d.onMerge }}" style="{{ ui.btn }}">Review &amp; merge</button>
+                  <button onClick="{{ d.onDifferent }}" style="{{ ui.btnGhost }}">Not the same person</button>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
         <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:15px">
           <input type="text" value="{{ members.search }}" onInput="{{ members.searchType }}" placeholder="Search a member…" style="{{ ui.input }};min-width:220px">
           <sc-for list="{{ members.filters }}" as="f" hint-placeholder-count="5">
@@ -418,7 +432,7 @@
         <div style="{{ ui.tblWrap }}">
           <table style="{{ ui.table }}">
             <thead><tr>
-              <th style="{{ ui.th }}">Member</th><th style="{{ ui.th }}">Status</th><th style="{{ ui.th }}">Pastor</th><th style="{{ ui.th }}">Location</th><th style="{{ ui.th }}">Services</th><th style="{{ ui.th }}">Rate</th><th style="{{ ui.th }}">Last Seen</th>
+              <th style="{{ ui.th }}">Member</th><th style="{{ ui.th }}">Status</th><th style="{{ ui.th }}">Pastor</th><th style="{{ ui.th }}">Household</th><th style="{{ ui.th }}">Location</th><th style="{{ ui.th }}">Services</th><th style="{{ ui.th }}">Rate</th><th style="{{ ui.th }}">Last Seen</th>
             </tr></thead>
             <tbody>
               <sc-for list="{{ members.rows }}" as="m" hint-placeholder-count="12">
@@ -426,6 +440,7 @@
                   <td style="{{ ui.tdName }}">{{ m.name }}</td>
                   <td style="{{ ui.td }}"><span style="{{ m.badge }}">{{ m.status }}</span></td>
                   <td style="{{ ui.td }}">{{ m.pastor }}</td>
+                  <td style="{{ ui.td }}">{{ m.household }}</td>
                   <td style="{{ ui.td }}">{{ m.location }}</td>
                   <td style="{{ ui.td }}">{{ m.services }}</td>
                   <td style="{{ ui.td }}">{{ m.rate }}</td>
@@ -736,7 +751,21 @@
               <select value="{{ modal.pastorId }}" onChange="{{ modal.onPastor }}" style="{{ ui.select }}">
                 <sc-for list="{{ modal.pastorOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.value }}">{{ o.label }}</option></sc-for>
               </select>
-              <button onClick="{{ modal.onEdit }}" style="{{ ui.btnGhost }};margin-left:auto">✎ Edit details</button>
+              <div style="margin-left:auto;display:flex;gap:8px">
+                <sc-if value="{{ modal.canMergeHere }}" hint-placeholder-val="{{ false }}"><button onClick="{{ modal.onMergeStart }}" style="{{ ui.btnGhost }}">⇆ Merge duplicate</button></sc-if>
+                <button onClick="{{ modal.onEdit }}" style="{{ ui.btnGhost }}">✎ Edit details</button>
+              </div>
+            </div>
+            <div style="font-size:12px;color:#928697;margin-top:8px;display:flex;flex-direction:column;gap:3px">
+              <div>{{ modal.aliasLine }}</div>
+              <sc-if value="{{ modal.hasMerges }}" hint-placeholder-val="{{ false }}">
+                <sc-for list="{{ modal.merges }}" as="mg" hint-placeholder-count="1">
+                  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 10px;background:#f6f1ea;border-radius:8px">
+                    <div style="flex:1;min-width:200px"><div>{{ mg.text }}</div><div style="color:#a47d1f">{{ mg.extra }}</div></div>
+                    <sc-if value="{{ mg.canUndo }}" hint-placeholder-val="{{ false }}"><button onClick="{{ mg.onUndo }}" style="{{ ui.btnGhost }}">↶ Undo merge</button></sc-if>
+                  </div>
+                </sc-for>
+              </sc-if>
             </div>
             <!-- pastoral follow-up log -->
             <div style="margin-top:22px;border-top:1px solid #f1e9da;padding-top:16px">
@@ -826,6 +855,51 @@
             <div style="display:flex;align-items:center;gap:10px;margin-top:20px"><button onClick="{{ modal.onSave }}" style="{{ ui.btn }}">{{ modal.saveLabel }}</button><button onClick="{{ modal.onCancel }}" style="{{ ui.btnGhost }}">Cancel</button></div>
           </sc-if>
 
+          <!-- merge duplicate members -->
+          <sc-if value="{{ modal.isMerge }}" hint-placeholder-val="{{ false }}">
+            <sc-if value="{{ modal.mergePicking }}" hint-placeholder-val="{{ false }}">
+              <input type="text" value="{{ modal.mergeSearch }}" onInput="{{ modal.onMergeSearch }}" placeholder="Search the other record…" style="{{ ui.input }};width:100%;margin-bottom:10px">
+              <div style="display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto">
+                <sc-for list="{{ modal.mergePickOpts }}" as="o" hint-placeholder-count="6">
+                  <button onClick="{{ o.onPick }}" style="text-align:left;font-size:13.5px;font-weight:500;padding:9px 12px;border-radius:9px;border:1.5px solid #e7dcc9;background:#fffdfa;cursor:pointer">{{ o.label }}</button>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ modal.mergeReady }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:12.5px;color:#5f5366;margin-bottom:12px">Choose the record to <b>keep</b>. The other is folded into it and removed — no attendance, notes or giving is lost.</div>
+              <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <sc-for list="{{ modal.mergeCards }}" as="c" hint-placeholder-count="2">
+                  <div style="{{ c.cardStyle }}">
+                    <div style="font-family:'Fraunces',serif;font-weight:600;font-size:16px;margin-bottom:6px">{{ c.name }}</div>
+                    <span style="{{ c.badge }}">{{ c.status }}</span>
+                    <div style="margin-top:10px;display:flex;flex-direction:column;gap:4px">
+                      <sc-for list="{{ c.lines }}" as="ln" hint-placeholder-count="6">
+                        <div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px"><span style="color:#928697">{{ ln.l }}</span><span style="font-weight:600;text-align:right">{{ ln.r }}</span></div>
+                      </sc-for>
+                    </div>
+                    <button onClick="{{ c.onKeep }}" style="{{ c.keepStyle }}">{{ c.keepLabel }}</button>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="background:#f6f1ea;border:1px solid #e7dcc9;border-radius:11px;padding:12px 14px;margin-top:14px;font-size:12.5px;color:#5f5366;line-height:1.55">{{ modal.mergeSummary }}</div>
+              <sc-if value="{{ modal.hasConflicts }}" hint-placeholder-val="{{ false }}">
+                <div style="background:#fdf3e3;border:1px solid #e8cf9a;border-radius:11px;padding:12px 14px;margin-top:10px;font-size:12.5px;color:#8a5a12">
+                  <div style="font-weight:700;margin-bottom:6px">These details differ. The kept record's value stays on the profile; the other is saved in the merge history, not lost.</div>
+                  <sc-for list="{{ modal.conflicts }}" as="c" hint-placeholder-count="2">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap"><b style="min-width:80px">{{ c.field }}</b><span>keeps “{{ c.keep }}”</span><span style="color:#a47d1f">· history: “{{ c.drop }}”</span></div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <div style="font-size:12px;color:#928697;margin-top:8px">You can undo this later from the kept member's profile.</div>
+              <sc-if value="{{ modal.hasError }}" hint-placeholder-val="{{ false }}"><div style="color:#c2683f;font-size:13px;margin-top:11px">{{ modal.error }}</div></sc-if>
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px">
+                <sc-if value="{{ modal.canMerge }}" hint-placeholder-val="{{ true }}"><button onClick="{{ modal.onSave }}" style="{{ ui.btn }}">{{ modal.saveLabel }}</button></sc-if>
+                <button onClick="{{ modal.onDifferent }}" style="{{ ui.btnGhost }}">Not the same person</button>
+                <button onClick="{{ modal.onCancel }}" style="{{ ui.btnGhost }};margin-left:auto">Cancel</button>
+              </div>
+            </sc-if>
+          </sc-if>
+
           <!-- link guest to an existing member -->
           <sc-if value="{{ modal.isLinkGuest }}" hint-placeholder-val="{{ false }}">
             <div style="background:#f6f1ea;border:1px solid #e7dcc9;border-radius:11px;padding:12px 14px;margin-bottom:14px;font-size:12.5px;color:#5f5366">
@@ -900,7 +974,7 @@ class Component extends DCLogic {
   };
 
   async componentDidMount() {
-    const mod = await import('./kre-db.js?v=9');
+    const mod = await import('./kre-db.js?v=11');
     this._mod = mod;
     this._STATUSES = mod.STATUSES;
     this.GUEST_STREAK = mod.GUEST_STREAK_FOR_MEMBERSHIP || 3;
@@ -1393,12 +1467,18 @@ class Component extends DCLogic {
     const rowVms = rows.map(m=>({
       name:m.name, status:m.status, badge:this._badge(m.status),
       pastor:(I.pastorsById[m.pastorId]&&I.pastorsById[m.pastorId].name)||'—',
+      household:(I.householdsById[m.householdId]&&I.householdsById[m.householdId].name)||'—',
       location:m.location||'—', services:this._servicesPresent(m.id)+'/'+total,
       rate:Math.round(this._rate(m.id)*100)+'%', lastSeen:this._fmtFull(this._lastSeen(m.id)),
       onOpen:()=>this.openMember(m.id),
     }));
+    const dups=this._dupPairs(I).map(([a,b])=>({
+      a:a.name, b:b.name, aSeen:this._servicesPresent(a.id), bSeen:this._servicesPresent(b.id),
+      onMerge:()=>this.openMerge(a.id,b.id), onDifferent:()=>this._notDuplicate(a.id,b.id) }));
     return { filters, rows:rowVms, search:this.state.memSearch, searchType:(e)=>this.setState({memSearch:e.target.value}),
-      count:rows.length+' member'+(rows.length===1?'':'s')+' shown', onAdd:()=>this.openAddMember() };
+      count:rows.length+' member'+(rows.length===1?'':'s')+' shown', onAdd:()=>this.openAddMember(),
+      dups, hasDups:dups.length>0 && this.state.role!=='viewer', dupCount:dups.length+' possible duplicate'+(dups.length===1?'':'s'),
+      canMerge:this.state.role==='admin' };
   }
 
   /* ---------- register vm ---------- */
@@ -1517,8 +1597,8 @@ class Component extends DCLogic {
 
     defs.push({ key:'roster', label:'Member Roster (full)', title:'Member Roster — Full Detail',
       subtitle:'Every member with all recorded fields, how they joined, and attendance analytics',
-      columns:['S/N','Member Name','Also Known As','Phone Number','Email','Current Location','Member Status','Pastor Assigned','Household','Joined On','How They Joined','Guest Visits Before Joining','Approved By','Services Present','Services Recorded','Total Services','Attendance Rate %','Avg Minutes','Total Minutes','First Attendance','Last Attendance','Consecutive Services Missed','Needs Follow-Up','Follow-ups Logged'],
-      rows:members.map((m,i)=>[i+1,m.name,(m.aliases||[]).join(', '),m.phone||'',m.email||'',m.location||'',m.status,pname(m.pastorId),hname(m.householdId),
+      columns:['S/N','Member Name','Also Known As','Merged From','Phone Number','Email','Current Location','Member Status','Pastor Assigned','Household','Joined On','How They Joined','Guest Visits Before Joining','Approved By','Services Present','Services Recorded','Total Services','Attendance Rate %','Avg Minutes','Total Minutes','First Attendance','Last Attendance','Consecutive Services Missed','Needs Follow-Up','Follow-ups Logged'],
+      rows:members.map((m,i)=>[i+1,m.name,(m.aliases||[]).join(', '),(m.mergedFrom||[]).map(x=>x.name+(x.at?' ('+String(x.at).slice(0,10)+(x.by?' by '+x.by:'')+')':'')).join('; '),m.phone||'',m.email||'',m.location||'',m.status,pname(m.pastorId),hname(m.householdId),
         m.joinedAt||'',joinedVia(m),(m.guestVisits||[]).length,m.approvedBy||'',
         this._servicesPresent(m.id),recorded(m.id),total,Math.round(this._rate(m.id)*100),Math.round(this._avgDur(m.id)),totalMinutes(m.id),
         firstSeen(m.id)||'',this._lastSeen(m.id)||'',this._consecutiveMisses(m.id),this._needsFollowup(m.id)?'YES':'',notesCount(m.id)]) });
@@ -1776,6 +1856,75 @@ class Component extends DCLogic {
     return out;
   }
 
+  /* Likely duplicate MEMBER records — the same person entered twice under slightly
+   * different spellings, splitting their attendance. Pairs an admin marked as
+   * "not the same person" are never suggested again. */
+  _dupPairs(I){
+    if(this._dupCache && this._dupSrc===I.snap) return this._dupCache;
+    const toks=s=>String(s||'').toLowerCase().replace(/[^a-z ]/g,' ').split(/\s+/).filter(t=>t.length>2);
+    // Short words must match exactly ("Yaa" ≠ "Baah"); longer words allow a typo or two.
+    const same=(t,g)=>{
+      if(t===g) return true;
+      const n=Math.min(t.length,g.length); if(n<4) return false;
+      const allow=n>=7?2:1;
+      return this._editDistance(t,g)<=allow || (n>=6&&t.slice(0,6)===g.slice(0,6));
+    };
+    const ms=(I.snap.members||[]).map(m=>({m,t:toks(m.name)})).filter(x=>x.t.length);
+    const pairs=[];
+    for(let i=0;i<ms.length;i++) for(let j=i+1;j<ms.length;j++){
+      const a=ms[i],b=ms[j];
+      if((a.m.notDuplicateOf||[]).indexOf(b.m.id)>=0||(b.m.notDuplicateOf||[]).indexOf(a.m.id)>=0) continue;
+      const [s,l]=a.t.length<=b.t.length?[a.t,b.t]:[b.t,a.t];
+      const hits=s.filter(g=>l.some(t=>same(t,g))).length;
+      if(hits>=Math.min(2,s.length) && (s.length>1 || l.length===1)) pairs.push([a.m,b.m]);
+    }
+    this._dupCache=pairs; this._dupSrc=I.snap; return pairs;
+  }
+  _memberSummary(I,m){
+    const rec=I.attByMember[m.id]||{};
+    const present=Object.keys(rec).filter(d=>rec[d].present).length;
+    const notes=(I.notesByMember[m.id]||[]).length;
+    return { id:m.id, name:m.name, status:m.status, badge:this._badge(m.status),
+      lines:[
+        {l:'Attended',r:present+' Sunday'+(present===1?'':'s')},
+        {l:'Last seen',r:this._fmtFull(this._lastSeen(m.id))},
+        {l:'Phone',r:m.phone||'—'},{l:'Email',r:m.email||'—'},
+        {l:'Location',r:m.location||'—'},
+        {l:'Pastor',r:(I.pastorsById[m.pastorId]&&I.pastorsById[m.pastorId].name)||'—'},
+        {l:'Household',r:(I.householdsById[m.householdId]&&I.householdsById[m.householdId].name)||'—'},
+        {l:'Follow-up notes',r:''+notes},
+        {l:'Added from',r:m.source||'—'}] };
+  }
+  openMerge(aId,bId){
+    const I=this._idx(); const a=I.membersById[aId], b=bId?I.membersById[bId]:null;
+    // Default to keeping the record with more attendance (ties: the roster entry).
+    let keep=aId;
+    if(b){ const pa=this._servicesPresent(aId), pb=this._servicesPresent(bId);
+      if(pb>pa || (pb===pa && b.source==='roster' && a.source!=='roster')) keep=bId; }
+    this.setState({ modal:{ type:'merge', id:aId }, form:{ aId, bId:bId||'', keep, search:'' }, formErr:'' });
+  }
+  async _doMerge(){
+    if(!this._canDelete())return;
+    const f=this.state.form; if(!f.aId||!f.bId){ this.setState({formErr:'Pick the other record first.'}); return; }
+    const keepId=f.keep, dropId=keepId===f.aId?f.bId:f.aId;
+    const I=this._idx(); const k=I.membersById[keepId], d=I.membersById[dropId];
+    if(await this._w('Merge',()=>this._db.mergeMembers(keepId,dropId,this.state.userEmail||null))){
+      this.setState({ modal:{ type:'profile', id:keepId } });
+      this.toast('“'+d.name+'” merged into '+k.name+' — nothing lost');
+    }
+  }
+  async _undoMerge(keepId,dropId,at){
+    if(!this._canDelete())return;
+    const k=this._idx().membersById[keepId]; const e=(k&&k.mergedFrom||[]).find(x=>x.id===dropId&&x.at===at);
+    if(!e) return;
+    if(typeof window!=='undefined' && !window.confirm('Undo the merge and bring back “'+e.name+'” as a separate member?')) return;
+    if(await this._w('Undo merge',()=>this._db.unmergeMember(keepId,dropId,at))) this.toast('“'+e.name+'” restored as a separate member');
+  }
+  async _notDuplicate(aId,bId){
+    if(!this._canWrite())return;
+    if(await this._w('Not the same person',()=>this._db.markNotDuplicate(aId,bId))) this.toast('Marked as different people');
+  }
+
   async _approveGuest(){
     if(!this._canWrite())return;
     const f=this.state.form, name=(f.name||'').trim();
@@ -1917,7 +2066,7 @@ class Component extends DCLogic {
     const pastorOpts=[{value:'',label:'— none —'}].concat(I.snap.pastors.map(p=>({value:p.id,label:p.name})));
     const householdOpts=[{value:'',label:'— none —'}].concat((I.snap.households||[]).slice().sort((a,b)=>a.name.localeCompare(b.name)).map(h=>({value:h.id,label:h.name})));
     const out={ modalOpen:true, modal:{ onClose:()=>this.closeModal(), onBackdrop:(e)=>{ if(e.target===e.currentTarget)this.closeModal(); }, statusOpts, pastorOpts, householdOpts,
-      isProfile:false, isMemberForm:false, isFtForm:false, isPastorForm:false, isHouseholdForm:false, isApproveGuest:false, isLinkGuest:false, isPastorToRoll:false, canEdit:this.state.role!=='viewer', canAdmin:this.state.role==='admin', hasError:!!this.state.formErr, error:this.state.formErr } };
+      isProfile:false, isMemberForm:false, isFtForm:false, isPastorForm:false, isHouseholdForm:false, isApproveGuest:false, isLinkGuest:false, isPastorToRoll:false, isMerge:false, canEdit:this.state.role!=='viewer', canAdmin:this.state.role==='admin', hasError:!!this.state.formErr, error:this.state.formErr } };
     const f=this.state.form;
 
     if(m.type==='profile'){
@@ -1931,7 +2080,14 @@ class Component extends DCLogic {
           {l:'How they joined',r:mem.joinedVia==='guest-promotion'?('Approved from guest ('+((mem.guestVisits||[]).length)+' visits)'):(mem.joinedVia==='manual'?'Added by an admin':'From the original database')},
           {l:'Consecutive services missed',r:String(this._consecutiveMisses(mem.id))},
           {l:'Last Attendance',r:this._fmtFull(this._lastSeen(mem.id))}],
-        status:mem.status, pastorId:mem.pastorId||'', onStatus:(e)=>this._saveStatus(mem.id,e.target.value), onPastor:(e)=>this._savePastor(mem.id,e.target.value), onEdit:()=>this.openEditMember(mem.id),
+        status:mem.status, pastorId:mem.pastorId||'', onStatus:(e)=>this._saveStatus(mem.id,e.target.value), onPastor:(e)=>this._savePastor(mem.id,e.target.value), onEdit:()=>this.openEditMember(mem.id), onMergeStart:()=>this.openMerge(mem.id,null), canMergeHere:this.state.role==='admin',
+        aliasLine:(mem.aliases||[]).length?('Also known as: '+mem.aliases.join(', ')):'',
+        merges:(mem.mergedFrom||[]).map(x=>{
+          const c=x.conflicts||{}; const extra=Object.keys(c).map(k=>({phone:'phone',email:'email',location:'location',status:'status',pastorId:'pastor',householdId:'household'}[k]||k)+': '+c[k]).join(' · ');
+          return { text:'Merged from “'+x.name+'”'+(x.at?' on '+this._fmtFull(String(x.at).slice(0,10)):'')+(x.by?' by '+x.by:''),
+            extra:extra?('Their other details: '+extra):'', canUndo:!!x.record && this.state.role==='admin',
+            onUndo:()=>this._undoMerge(mem.id,x.id,x.at) }; }),
+        hasMerges:(mem.mergedFrom||[]).length>0,
         notes, hasNotes:notes.length>0, noteText:this.state.noteText, noteType:this.state.noteType,
         noteTypeOpts:['call','visit','message','note'].map(t=>({value:t,label:t.charAt(0).toUpperCase()+t.slice(1)})),
         onNoteText:(e)=>this.setState({noteText:e.target.value}), onNoteType:(e)=>this.setState({noteType:e.target.value}),
@@ -1971,6 +2127,38 @@ class Component extends DCLogic {
         onF_status:(e)=>this._setForm('status',e.target.value), onF_pastorId:(e)=>this._setForm('pastorId',e.target.value),
         onF_householdId:(e)=>this._setForm('householdId',e.target.value), onF_joinedAt:(e)=>this._setForm('joinedAt',e.target.value),
         saveLabel:'Approve as member', onSave:()=>this._approveGuest(), onCancel:()=>this.closeModal() });
+    } else if(m.type==='merge'){
+      const A=I.membersById[f.aId], B=f.bId?I.membersById[f.bId]:null;
+      if(!A) return { modalOpen:false };
+      const q=(f.search||'').toLowerCase();
+      const pickOpts=B?[]:(I.snap.members||[]).filter(x=>x.id!==A.id&&(!q||x.name.toLowerCase().indexOf(q)>=0))
+        .sort((x,y)=>x.name.localeCompare(y.name)).slice(0,40)
+        .map(x=>({ label:x.name, onPick:()=>this.openMerge(A.id,x.id) }));
+      const card=(mm)=>{ const s=this._memberSummary(I,mm); const keepIt=f.keep===mm.id;
+        return Object.assign(s,{ keepLabel:keepIt?'✓ Keep this record':'Keep this one',
+          onKeep:()=>this._setForm('keep',mm.id),
+          cardStyle:'flex:1;min-width:230px;border-radius:13px;padding:14px 15px;border:2px solid '+(keepIt?'#5f7355':'#e7dcc9')+';background:'+(keepIt?'#f3f7f4':'#fffdfa'),
+          keepStyle:'width:100%;margin-top:11px;font-weight:600;font-size:12.5px;padding:8px;border-radius:9px;cursor:pointer;border:1.5px solid '+(keepIt?'#5f7355':'#e7dcc9')+';background:'+(keepIt?'#5f7355':'#fff')+';color:'+(keepIt?'#fff':'#5f5366') }); };
+      let combined=0, overlap=0;
+      if(B){ const ra=I.attByMember[A.id]||{}, rb=I.attByMember[B.id]||{}; const ds={};
+        Object.keys(ra).concat(Object.keys(rb)).forEach(d=>ds[d]=1);
+        Object.keys(ds).forEach(d=>{ const p=(ra[d]&&ra[d].present)||(rb[d]&&rb[d].present); if(p)combined++; if(ra[d]&&rb[d])overlap++; }); }
+      const keepM=B?(f.keep===B.id?B:A):A, dropM=B?(f.keep===B.id?A:B):null;
+      const label={phone:'Phone',email:'Email',location:'Location',pastorId:'Pastor',householdId:'Household',status:'Status'};
+      const show=(k,v)=>k==='pastorId'?((I.pastorsById[v]&&I.pastorsById[v].name)||v):(k==='householdId'?((I.householdsById[v]&&I.householdsById[v].name)||v):v);
+      const conflicts=B?Object.keys(label).filter(k=>keepM[k]&&dropM[k]&&String(keepM[k])!==String(dropM[k]))
+        .map(k=>({ field:label[k], keep:show(k,keepM[k]), drop:show(k,dropM[k]) })):[];
+      Object.assign(out.modal,{ isMerge:true, avatar:'⇆', title:B?'Merge Duplicate Members':'Merge with Another Member',
+        subtitle:B?'Combine two records of the same person':'Find the duplicate record of '+A.name,
+        mergePicking:!B, mergeReady:!!B, mergeSearch:f.search||'', onMergeSearch:(e)=>this._setForm('search',e.target.value), mergePickOpts:pickOpts,
+        mergeCards:B?[card(A),card(B)]:[],
+        mergeSummary:B?('“'+dropM.name+'” will be folded into “'+keepM.name+'”. Attendance combines to '+combined+' Sunday'+(combined===1?'':'s')
+          +(overlap?' ('+overlap+' Sunday'+(overlap===1?'':'s')+' recorded on both — counted once, longest stay kept)':'')
+          +'. Phone, email, pastor and household fill in where the kept record is blank; notes, giving and first-timer links move across; “'+dropM.name+'” is saved as an alias so the roll still recognises it.'):'',
+        conflicts, hasConflicts:conflicts.length>0,
+        canMerge:this.state.role==='admin',
+        onSave:()=>this._doMerge(), saveLabel:'Merge records', onCancel:()=>this.closeModal(),
+        onDifferent:B?(()=>{ this._notDuplicate(A.id,B.id); this.closeModal(); }):null });
     } else if(m.type==='linkGuest'){
       const g=this._guestStats(I).all.find(x=>x.key===m.id)||{name:'',visits:[]};
       const q=(f.search||'').toLowerCase();
