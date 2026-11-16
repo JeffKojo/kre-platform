@@ -9,8 +9,8 @@
 <x-dc>
 <helmet>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&amp;family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&amp;family=Outfit:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
 <!-- Firebase (compat) + your config. While config holds placeholders the app runs on local demo data; paste real keys in firebase-config.js to go live. -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -72,7 +72,7 @@
   <div style="display:flex;min-height:100vh">
 
     <!-- ============ SIDEBAR ============ -->
-    <aside data-noprint style="{{ ui.sidebar }}">
+    <aside data-noprint="" style="{{ ui.sidebar }}">
       <div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:4px 6px 18px;border-bottom:1px solid rgba(236,200,104,.18)">
         <div style="{{ ui.crest }}">KRE</div>
         <div style="font-family:'Cormorant Garamond',serif;font-weight:700;font-size:19px;line-height:1.05;color:#fff;letter-spacing:.02em;margin-top:12px">Kadosh Royal<br>Ecclesia</div>
@@ -100,13 +100,13 @@
     <!-- ============ MAIN ============ -->
     <main style="flex:1;min-width:0;padding:28px 34px 70px">
       <sc-if value="{{ isDemoMode }}" hint-placeholder-val="{{ false }}">
-        <div data-noprint style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fdf3e3;border:1px solid #e8cf9a;color:#8a5a12;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px">
+        <div data-noprint="" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fdf3e3;border:1px solid #e8cf9a;color:#8a5a12;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px">
           <b>Demo data — not connected to the church database.</b><span>Anything you enter here stays in this browser only and will not be shared or kept.</span>
           <button onClick="{{ onRetryLive }}" style="{{ ui.btnGhost }};margin-left:auto">Connect to live database</button>
         </div>
       </sc-if>
       <sc-if value="{{ hasSaveError }}" hint-placeholder-val="{{ false }}">
-        <div data-noprint style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#f9ece7;border:1px solid #e3c1b4;color:#a83f2b;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px">
+        <div data-noprint="" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#f9ece7;border:1px solid #e3c1b4;color:#a83f2b;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px">
           <b>Not saved.</b><span>{{ saveError }}</span>
           <button onClick="{{ onDismissError }}" style="{{ ui.btnGhost }};margin-left:auto">Dismiss</button>
         </div>
@@ -119,7 +119,7 @@
       <!-- ---------- DASHBOARD ---------- -->
       <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ true }}">
         <sc-if value="{{ dash.hasPending }}" hint-placeholder-val="{{ false }}">
-          <div data-noprint style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#eef4f0;border:1px solid #cfe0d5;color:#41614c;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px">
+          <div data-noprint="" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#eef4f0;border:1px solid #cfe0d5;color:#41614c;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px">
             <b>Membership approvals waiting.</b><span>{{ dash.pendingLabel }}</span>
             <button onClick="{{ dash.onGoApprovals }}" style="{{ ui.btnGhost }};margin-left:auto">Review now</button>
           </div>
@@ -133,7 +133,7 @@
             </div>
           </sc-for>
         </div>
-        <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:15px;margin-bottom:15px" data-grid2>
+        <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:15px;margin-bottom:15px" data-grid2="">
           <div style="{{ ui.panel }}">
             <div style="{{ ui.panelH }}"><h3 style="{{ ui.h3 }}">Attendance Momentum</h3><div style="{{ ui.muted }}">Sunday headcount, every recorded service</div></div>
             <div style="display:flex;align-items:flex-end;gap:5px;height:200px;padding-top:10px">
@@ -158,7 +158,7 @@
             </div>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px" data-grid2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px" data-grid2="">
           <div style="{{ ui.panel }}">
             <div style="{{ ui.panelH }}"><h3 style="{{ ui.h3 }}">Most Faithful</h3><div style="{{ ui.muted }}">by attendance rate</div></div>
             <div style="display:flex;flex-direction:column;gap:9px">
@@ -205,7 +205,7 @@
           </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:340px 1fr;gap:15px;align-items:start" data-grid2>
+        <div style="display:grid;grid-template-columns:340px 1fr;gap:15px;align-items:start" data-grid2="">
           <!-- LEFT: headcount + guests -->
           <div style="display:flex;flex-direction:column;gap:15px">
             <div style="{{ ui.panelGold }}">
@@ -573,13 +573,13 @@
 
       <!-- ---------- REPORTS ---------- -->
       <sc-if value="{{ isReports }}" hint-placeholder-val="{{ false }}">
-        <p style="{{ ui.intro }}" data-noprint><b>Download full workbook</b> gives you one Excel file with every sheet — roster, attendance grid, durations, services, guests, first timers, follow-ups, households, giving and pastor summary — with all columns, exactly like the database you sent. <b>CSV</b> exports just the sheet shown; <b>Print</b> saves it as PDF.</p>
-        <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:12px" data-noprint>
+        <p style="{{ ui.intro }}" data-noprint=""><b>Download full workbook</b> gives you one Excel file with every sheet — roster, attendance grid, durations, services, guests, first timers, follow-ups, households, giving and pastor summary — with all columns, exactly like the database you sent. <b>CSV</b> exports just the sheet shown; <b>Print</b> saves it as PDF.</p>
+        <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:12px" data-noprint="">
           <button onClick="{{ reports.onWorkbook }}" style="{{ ui.btn }}">⭳ Download full workbook (.xlsx)</button>
           <button onClick="{{ reports.onCSV }}" style="{{ ui.btnGhost }}">⭳ This sheet as CSV</button>
           <button onClick="{{ reports.onPrint }}" style="{{ ui.btnGhost }}">⎙ Print / Save PDF</button>
         </div>
-        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px" data-noprint>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px" data-noprint="">
           <sc-for list="{{ reports.tabs }}" as="t" hint-placeholder-count="8">
             <button onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
           </sc-for>
@@ -594,7 +594,7 @@
             <div style="text-align:right;font-size:12px;color:#928697">{{ reports.count }}<br>Generated {{ todayLabel }}</div>
           </div>
           <sc-if value="{{ reports.hasTrunc }}" hint-placeholder-val="{{ false }}">
-            <div data-noprint style="font-size:12px;color:#a47d1f;background:#fdf6e6;border-radius:8px;padding:8px 11px;margin:10px 0 2px">{{ reports.truncNote }}</div>
+            <div data-noprint="" style="font-size:12px;color:#a47d1f;background:#fdf6e6;border-radius:8px;padding:8px 11px;margin:10px 0 2px">{{ reports.truncNote }}</div>
           </sc-if>
           <div style="overflow:auto">
             <table style="{{ ui.table }}">
@@ -644,7 +644,7 @@
             <div style="{{ c.style }}"><div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#928697;font-weight:600">{{ c.k }}</div><div style="font-family:'Fraunces',serif;font-size:30px;font-weight:600;margin-top:8px">{{ c.v }}</div><div style="font-size:12px;color:#5f5366;margin-top:5px">{{ c.d }}</div></div>
           </sc-for>
         </div>
-        <div style="display:grid;grid-template-columns:360px 1fr;gap:15px;align-items:start" data-grid2>
+        <div style="display:grid;grid-template-columns:360px 1fr;gap:15px;align-items:start" data-grid2="">
           <div style="{{ ui.panelGold }}">
             <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#a47d1f;font-weight:700;margin-bottom:12px">Record giving</div>
             <label style="{{ ui.lbl }}">Service date</label>
@@ -800,6 +800,7 @@
               <div><label style="{{ ui.lbl }}">Household</label><select value="{{ modal.fHouseholdId }}" onChange="{{ modal.onF_householdId }}" style="{{ ui.select }};width:100%"><sc-for list="{{ modal.householdOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select></div>
               <div><label style="{{ ui.lbl }}">Status</label><select value="{{ modal.fStatus }}" onChange="{{ modal.onF_status }}" style="{{ ui.select }};width:100%"><sc-for list="{{ modal.statusOpts }}" as="o" hint-placeholder-count="6"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select></div>
               <div><label style="{{ ui.lbl }}">Assigned Pastor</label><select value="{{ modal.fPastorId }}" onChange="{{ modal.onF_pastorId }}" style="{{ ui.select }};width:100%"><sc-for list="{{ modal.pastorOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select></div>
+              <div style="grid-column:1/-1"><label for="kre-invited-by" style="{{ ui.lbl }}">Invited by</label><input id="kre-invited-by" type="text" list="kre-inviter-list" value="{{ modal.fInvitedBy }}" onInput="{{ modal.onF_invitedBy }}" placeholder="Start typing a member's name, or enter someone not on the roll" style="{{ ui.input }};width:100%"><datalist id="kre-inviter-list"><sc-for list="{{ modal.inviterOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.value }}"></option></sc-for></datalist><div style="font-size:12px;color:#6f6475;margin-top:5px">{{ modal.inviterHint }}</div></div>
             </div>
             <sc-if value="{{ modal.hasError }}" hint-placeholder-val="{{ false }}"><div style="color:#c2683f;font-size:13px;margin-top:11px">{{ modal.error }}</div></sc-if>
             <div style="display:flex;align-items:center;gap:10px;margin-top:20px"><button onClick="{{ modal.onSave }}" style="{{ ui.btn }}">{{ modal.saveLabel }}</button><button onClick="{{ modal.onCancel }}" style="{{ ui.btnGhost }}">Cancel</button><sc-if value="{{ modal.canDelete }}" hint-placeholder-val="{{ false }}"><button onClick="{{ modal.onDelete }}" style="{{ ui.btnDanger }};margin-left:auto">Delete</button></sc-if></div>
@@ -840,6 +841,7 @@
               <div><label style="{{ ui.lbl }}">Location</label><input type="text" value="{{ modal.fLocation }}" onInput="{{ modal.onF_location }}" style="{{ ui.input }};width:100%"></div>
               <div><label style="{{ ui.lbl }}">Assigned Pastor</label><select value="{{ modal.fPastorId }}" onChange="{{ modal.onF_pastorId }}" style="{{ ui.select }};width:100%"><sc-for list="{{ modal.pastorOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select></div>
               <div style="grid-column:1/-1"><label style="{{ ui.lbl }}">Household</label><select value="{{ modal.fHouseholdId }}" onChange="{{ modal.onF_householdId }}" style="{{ ui.select }};width:100%"><sc-for list="{{ modal.householdOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.value }}">{{ o.label }}</option></sc-for></select></div>
+              <div style="grid-column:1/-1"><label for="kre-approve-invited-by" style="{{ ui.lbl }}">Invited by</label><input id="kre-approve-invited-by" type="text" list="kre-approve-inviter-list" value="{{ modal.fInvitedBy }}" onInput="{{ modal.onF_invitedBy }}" placeholder="Start typing a member's name, or enter someone not on the roll" style="{{ ui.input }};width:100%"><datalist id="kre-approve-inviter-list"><sc-for list="{{ modal.inviterOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.value }}"></option></sc-for></datalist><div style="font-size:12px;color:#6f6475;margin-top:5px">{{ modal.inviterHint }}</div></div>
             </div>
             <sc-if value="{{ modal.hasError }}" hint-placeholder-val="{{ false }}"><div style="color:#c2683f;font-size:13px;margin-top:11px">{{ modal.error }}</div></sc-if>
             <sc-if value="{{ modal.hasDupWarn }}" hint-placeholder-val="{{ false }}">
@@ -974,7 +976,7 @@ class Component extends DCLogic {
   };
 
   async componentDidMount() {
-    const mod = await import('./kre-db.js?v=11');
+    const mod = await import('./kre-db.js?v=13');
     this._mod = mod;
     this._STATUSES = mod.STATUSES;
     this.GUEST_STREAK = mod.GUEST_STREAK_FOR_MEMBERSHIP || 3;
@@ -1593,13 +1595,14 @@ class Component extends DCLogic {
     const defs=[];
 
     const LIMIT=this.MISS_LIMIT||4;
+    const invitedByName=(m)=>(m.invitedById&&I.membersById[m.invitedById]&&I.membersById[m.invitedById].name)||m.invitedBy||'';
     const joinedVia=(m)=>m.joinedVia==='guest-promotion'?'Approved from guest':(m.joinedVia==='pastor'?'Pastor added to roll':(m.joinedVia==='manual'?'Added by admin':'Original database'));
 
     defs.push({ key:'roster', label:'Member Roster (full)', title:'Member Roster — Full Detail',
       subtitle:'Every member with all recorded fields, how they joined, and attendance analytics',
-      columns:['S/N','Member Name','Also Known As','Merged From','Phone Number','Email','Current Location','Member Status','Pastor Assigned','Household','Joined On','How They Joined','Guest Visits Before Joining','Approved By','Services Present','Services Recorded','Total Services','Attendance Rate %','Avg Minutes','Total Minutes','First Attendance','Last Attendance','Consecutive Services Missed','Needs Follow-Up','Follow-ups Logged'],
+      columns:['S/N','Member Name','Also Known As','Merged From','Phone Number','Email','Current Location','Member Status','Pastor Assigned','Household','Joined On','How They Joined','Invited By','Guest Visits Before Joining','Approved By','Services Present','Services Recorded','Total Services','Attendance Rate %','Avg Minutes','Total Minutes','First Attendance','Last Attendance','Consecutive Services Missed','Needs Follow-Up','Follow-ups Logged'],
       rows:members.map((m,i)=>[i+1,m.name,(m.aliases||[]).join(', '),(m.mergedFrom||[]).map(x=>x.name+(x.at?' ('+String(x.at).slice(0,10)+(x.by?' by '+x.by:'')+')':'')).join('; '),m.phone||'',m.email||'',m.location||'',m.status,pname(m.pastorId),hname(m.householdId),
-        m.joinedAt||'',joinedVia(m),(m.guestVisits||[]).length,m.approvedBy||'',
+        m.joinedAt||'',joinedVia(m),invitedByName(m),(m.guestVisits||[]).length,m.approvedBy||'',
         this._servicesPresent(m.id),recorded(m.id),total,Math.round(this._rate(m.id)*100),Math.round(this._avgDur(m.id)),totalMinutes(m.id),
         firstSeen(m.id)||'',this._lastSeen(m.id)||'',this._consecutiveMisses(m.id),this._needsFollowup(m.id)?'YES':'',notesCount(m.id)]) });
 
@@ -1733,7 +1736,7 @@ class Component extends DCLogic {
   _downloadCSV(title,columns,rows){
     const esc=v=>{ const s=(v==null?'':String(v)); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
     const csv=[columns.map(esc).join(',')].concat(rows.map(r=>r.map(esc).join(','))).join('\r\n');
-    const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+    const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
     const url=URL.createObjectURL(blob); const a=document.createElement('a');
     a.href=url; a.download='KRE '+title+' '+this._todayISO()+'.csv'; document.body.appendChild(a); a.click();
     document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),1000); this.toast('CSV downloaded');
@@ -1819,7 +1822,7 @@ class Component extends DCLogic {
     const gs=this._guestStats(this._idx());
     const g=gs.all.find(x=>x.key===key); if(!g)return;
     this.setState({ modal:{ type:'approveGuest', id:key },
-      form:{ name:g.name, phone:'', email:'', location:'', status:'Growing', pastorId:'', householdId:'',
+      form:{ name:g.name, phone:'', email:'', location:'', status:'Growing', pastorId:'', householdId:'', invitedBy:'',
         joinedAt:this._todayISO(), visits:g.visits.slice() }, formErr:'', dupWarn:null, dupAck:false });
   }
   /* Near-miss name check: "Cindy Amoak" vs member "Cindy Amoako" shares only one
@@ -1936,11 +1939,14 @@ class Component extends DCLogic {
       const near=this._nearMatches(name);
       if(near.length){ this.setState({ dupWarn:near.map(m=>m.name), formErr:'' }); return; }
     }
+    const inv=(f.invitedBy||'').trim();
+    const invM=inv?this._findMemberByName(inv):null;
     const ok=await this._w('Membership approval',()=>this._db.promoteGuestToMember(
       this.state.modal.id ? (this._guestStats(this._idx()).all.find(g=>g.key===this.state.modal.id)||{}).name || name : name,
       f.visits||[],
       { name, phone:(f.phone||'').trim()||null, email:(f.email||'').trim()||null, location:(f.location||'').trim()||null,
-        status:f.status||'Growing', pastorId:f.pastorId||null, householdId:f.householdId||null, joinedAt:f.joinedAt||this._todayISO() },
+        status:f.status||'Growing', pastorId:f.pastorId||null, householdId:f.householdId||null, joinedAt:f.joinedAt||this._todayISO(),
+        invitedBy:invM?invM.name:(inv||null), invitedById:invM?invM.id:null },
       this.state.userEmail||null));
     if(ok){ this.closeModal(); this.setState({screen:'members'}); this.toast(name+' is now a member'); }
   }
@@ -1982,8 +1988,8 @@ class Component extends DCLogic {
 
   /* ==================== MODALS ==================== */
   openMember(id){ this.setState({ modal:{ type:'profile', id } }); }
-  openAddMember(){ this.setState({ modal:{ type:'memberForm', id:null }, form:{ name:'',phone:'',email:'',location:'',status:'Growing',pastorId:'',householdId:'' }, formErr:'' }); }
-  openEditMember(id){ const m=this._idx().membersById[id]; this.setState({ modal:{ type:'memberForm', id }, form:{ name:m.name,phone:m.phone||'',email:m.email||'',location:m.location||'',status:m.status,pastorId:m.pastorId||'',householdId:m.householdId||'' }, formErr:'' }); }
+  openAddMember(){ this.setState({ modal:{ type:'memberForm', id:null }, form:{ name:'',phone:'',email:'',location:'',status:'Growing',pastorId:'',householdId:'',invitedBy:'' }, formErr:'' }); }
+  openEditMember(id){ const m=this._idx().membersById[id]; this.setState({ modal:{ type:'memberForm', id }, form:{ name:m.name,phone:m.phone||'',email:m.email||'',location:m.location||'',status:m.status,pastorId:m.pastorId||'',householdId:m.householdId||'',invitedBy:(m.invitedById&&this._idx().membersById[m.invitedById]&&this._idx().membersById[m.invitedById].name)||m.invitedBy||'' }, formErr:'' }); }
   openAddFirstTimer(){ this.setState({ modal:{ type:'ftForm', id:null }, form:{ name:'',invitedBy:'',contacts:'',firstVisit:this._idx().dates[this._idx().dates.length-1]||this._latestSunday() }, formErr:'' }); }
   openFirstTimer(id){ const f=this._idx().snap.firstTimers.find(x=>x.id===id); this.setState({ modal:{ type:'ftForm', id }, form:{ name:f.name,invitedBy:f.invitedBy||'',contacts:f.contacts||'',firstVisit:f.firstVisit||'' }, formErr:'' }); }
   openAddPastor(){ this.setState({ modal:{ type:'pastorForm', id:null }, form:{ name:'' }, formErr:'' }); }
@@ -2028,6 +2034,12 @@ class Component extends DCLogic {
 
   async _saveStatus(id,status){ if(!this._canWrite())return; if(await this._w('Status',()=>this._db.updateMember(id,{status}))) this.toast('Status updated'); }
   async _savePastor(id,pastorId){ if(!this._canWrite())return; if(await this._w('Pastor assignment',()=>this._db.updateMember(id,{pastorId:pastorId||null}))) this.toast('Pastor updated'); }
+  /* Finds a member by their name or any recorded alias, so "Invited by" links to
+   * the real record and stays correct if that member is renamed later. */
+  _findMemberByName(name){
+    const k=this._nkey(name); if(!k) return null;
+    return (this._idx().snap.members||[]).find(m=>this._nkey(m.name)===k||(m.aliases||[]).some(a=>this._nkey(a)===k))||null;
+  }
   async _saveMemberForm(){
     if(!this._canWrite())return;
     const f=this.state.form; const name=(f.name||'').trim();
@@ -2035,6 +2047,12 @@ class Component extends DCLogic {
     const dup=this._idx().snap.members.find(m=>m.name.toLowerCase().replace(/[^a-z0-9]/g,'')===name.toLowerCase().replace(/[^a-z0-9]/g,'')&&m.id!==this.state.modal.id);
     if(dup){ this.setState({formErr:'Another member already has that name.'}); return; }
     const patch={ name, phone:(f.phone||'').trim()||null, email:(f.email||'').trim()||null, location:(f.location||'').trim()||null, status:f.status||'Growing', pastorId:f.pastorId||null, householdId:f.householdId||null };
+    // Invited by: linked to a member record when the name is on the roll, otherwise kept as typed.
+    const inv=(f.invitedBy||'').trim();
+    const invM=inv?this._findMemberByName(inv):null;
+    if(invM&&this.state.modal.id&&invM.id===this.state.modal.id){ this.setState({formErr:'A member cannot be recorded as inviting themselves.'}); return; }
+    patch.invitedBy=invM?invM.name:(inv||null);
+    patch.invitedById=invM?invM.id:null;
     if(this.state.modal.id){ if(await this._w('Member',()=>this._db.updateMember(this.state.modal.id,patch))){ this.setState({modal:{type:'profile',id:this.state.modal.id}}); this.toast('Saved'); } }
     else { if(await this._w('New member',()=>this._db.addMember(patch))){ this.closeModal(); this.setState({screen:'members'}); this.toast('Member added'); } }
   }
@@ -2075,7 +2093,7 @@ class Component extends DCLogic {
       const notes=(I.notesByMember[mem.id]||[]).map(n=>({ date:this._fmtFull(n.date), type:(n.type||'note'), text:n.text, by:n.by||'', onDelete:()=>this._deleteNote(n.id) }));
       Object.assign(out.modal,{ isProfile:true, avatar:mem.name.trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase(), title:mem.name, subtitle:mem.status,
         stats:[{k:'Services',v:sp+'/'+total},{k:'Attend. Rate',v:Math.round(rate*100)+'%'},{k:'Avg. Minutes',v:Math.round(ad)},{k:'Last Seen',v:this._fmt(this._lastSeen(mem.id))}],
-        bio:[{l:'Assigned Pastor',r:(I.pastorsById[mem.pastorId]&&I.pastorsById[mem.pastorId].name)||'—'},{l:'Household',r:(I.householdsById[mem.householdId]&&I.householdsById[mem.householdId].name)||'—'},{l:'Phone',r:mem.phone||'—'},{l:'Email',r:mem.email||'—'},{l:'Location',r:mem.location||'—'},
+        bio:[{l:'Assigned Pastor',r:(I.pastorsById[mem.pastorId]&&I.pastorsById[mem.pastorId].name)||'—'},{l:'Household',r:(I.householdsById[mem.householdId]&&I.householdsById[mem.householdId].name)||'—'},{l:'Invited by',r:(mem.invitedById&&I.membersById[mem.invitedById]&&I.membersById[mem.invitedById].name)||mem.invitedBy||'—'},{l:'Phone',r:mem.phone||'—'},{l:'Email',r:mem.email||'—'},{l:'Location',r:mem.location||'—'},
           {l:'Joined',r:mem.joinedAt?this._fmtFull(mem.joinedAt):'—'},
           {l:'How they joined',r:mem.joinedVia==='guest-promotion'?('Approved from guest ('+((mem.guestVisits||[]).length)+' visits)'):(mem.joinedVia==='manual'?'Added by an admin':'From the original database')},
           {l:'Consecutive services missed',r:String(this._consecutiveMisses(mem.id))},
@@ -2095,6 +2113,9 @@ class Component extends DCLogic {
     } else if(m.type==='memberForm'){
       Object.assign(out.modal,{ isMemberForm:true, avatar:m.id?'✎':'+', title:m.id?'Edit Member':'Add New Member', subtitle:m.id?'Update details':'Add someone to the roll',
         fName:f.name||'', fPhone:f.phone||'', fEmail:f.email||'', fLocation:f.location||'', fStatus:f.status||'Growing', fPastorId:f.pastorId||'', fHouseholdId:f.householdId||'',
+        fInvitedBy:f.invitedBy||'', onF_invitedBy:(e)=>this._setForm('invitedBy',e.target.value),
+        inviterOpts:I.snap.members.filter(x=>x.id!==m.id).map(x=>x.name).sort((a,b)=>a.localeCompare(b)).map(n=>({value:n})),
+        inviterHint:(()=>{ const t=(f.invitedBy||'').trim(); if(!t) return 'Optional. Pick a name from the list so it links to that member.'; const hit=this._findMemberByName(t); return hit?('Linked to member: '+hit.name):'Not on the roll, so it will be saved as a name only.'; })(),
         onF_name:(e)=>this._setForm('name',e.target.value), onF_phone:(e)=>this._setForm('phone',e.target.value), onF_email:(e)=>this._setForm('email',e.target.value), onF_location:(e)=>this._setForm('location',e.target.value),
         onF_status:(e)=>this._setForm('status',e.target.value), onF_pastorId:(e)=>this._setForm('pastorId',e.target.value), onF_householdId:(e)=>this._setForm('householdId',e.target.value),
         saveLabel:m.id?'Save changes':'Add to Roll', onSave:()=>this._saveMemberForm(), onCancel:()=>{ m.id?this.setState({modal:{type:'profile',id:m.id}}):this.closeModal(); },
@@ -2126,6 +2147,9 @@ class Component extends DCLogic {
         onF_email:(e)=>this._setForm('email',e.target.value), onF_location:(e)=>this._setForm('location',e.target.value),
         onF_status:(e)=>this._setForm('status',e.target.value), onF_pastorId:(e)=>this._setForm('pastorId',e.target.value),
         onF_householdId:(e)=>this._setForm('householdId',e.target.value), onF_joinedAt:(e)=>this._setForm('joinedAt',e.target.value),
+        fInvitedBy:f.invitedBy||'', onF_invitedBy:(e)=>this._setForm('invitedBy',e.target.value),
+        inviterOpts:I.snap.members.map(x=>x.name).sort((a,b)=>a.localeCompare(b)).map(n=>({value:n})),
+        inviterHint:(()=>{ const t=(f.invitedBy||'').trim(); if(!t) return 'Optional. Pick a name from the list so it links to that member.'; const hit=this._findMemberByName(t); return hit?('Linked to member: '+hit.name):'Not on the roll, so it will be saved as a name only.'; })(),
         saveLabel:'Approve as member', onSave:()=>this._approveGuest(), onCancel:()=>this.closeModal() });
     } else if(m.type==='merge'){
       const A=I.membersById[f.aId], B=f.bId?I.membersById[f.bId]:null;

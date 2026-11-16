@@ -15,7 +15,7 @@
  *
  * FIRESTORE SHAPE (collections):
  *   pastors/{id}        { name }
- *   members/{id}        { name, phone, location, status, pastorId, source }
+ *   members/{id}        { name, phone, location, status, pastorId, source, invitedBy, invitedById }
  *   attendance/{id}     { memberId, date(YYYY-MM-DD), present(bool), minutes(num|null) }
  *                         id = `${memberId}_${date}` (deterministic → no dupes)
  *   services/{date}     { date, headcount(num|null), guestRoll[](string) }
@@ -172,7 +172,7 @@ class LocalBackend {
       aliases: m.aliases || [],
       source: m.source || 'added', joinedAt: m.joinedAt || new Date().toISOString().slice(0, 10),
       joinedVia: m.joinedVia || 'manual', guestVisits: m.guestVisits || [], firstSeenAsGuest: m.firstSeenAsGuest || null,
-      approvedBy: m.approvedBy || null };
+      approvedBy: m.approvedBy || null, invitedBy: m.invitedBy || null, invitedById: m.invitedById || null };
     this.state.members.push(rec); this._persist(); return rec;
   }
   async updateMember(id, patch) {
@@ -430,7 +430,7 @@ class FirebaseBackend {
       aliases: m.aliases || [],
       source: m.source || 'added', joinedAt: m.joinedAt || new Date().toISOString().slice(0, 10),
       joinedVia: m.joinedVia || 'manual', guestVisits: m.guestVisits || [], firstSeenAsGuest: m.firstSeenAsGuest || null,
-      approvedBy: m.approvedBy || null };
+      approvedBy: m.approvedBy || null, invitedBy: m.invitedBy || null, invitedById: m.invitedById || null };
     const ref = await this.db.collection('members').add(rec); return Object.assign({ id: ref.id }, rec);
   }
   async updateMember(id, patch) { await this.db.collection('members').doc(id).set(patch, { merge: true }); return Object.assign({ id }, patch); }
@@ -511,7 +511,8 @@ class FirebaseBackend {
       pastorId: memberData.pastorId || null, householdId: memberData.householdId || null,
       source: 'guest-promotion', joinedAt: memberData.joinedAt || new Date().toISOString().slice(0, 10),
       joinedVia: 'guest-promotion', guestVisits: (visitDates || []).slice(), aliases: memberData.aliases || [],
-      firstSeenAsGuest: (visitDates || [])[0] || null, approvedBy: by || null };
+      firstSeenAsGuest: (visitDates || [])[0] || null, approvedBy: by || null,
+      invitedBy: memberData.invitedBy || null, invitedById: memberData.invitedById || null };
     batch.set(memberRef, rec);
 
     (visitDates || []).forEach(d => {
